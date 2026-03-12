@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, CheckSquare, RotateCcw, Kanban, Archive, Lightbulb, Settings } from 'lucide-react'
+import { Home, CheckSquare, RotateCcw, Kanban, Archive, Lightbulb, Settings, FolderKanban, Newspaper, Network } from 'lucide-react'
 import { useTodoStore } from '@/store/todoStore'
 
 const workNav = [
@@ -109,6 +109,42 @@ export default function Sidebar() {
           >
             <Lightbulb size={16} strokeWidth={1.8} />
             브레인스토밍
+          </Link>
+          <Link
+            href="/mindmap"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+            style={
+              pathname === '/mindmap'
+                ? { backgroundColor: '#EDE9FE', color: '#7C3AED' }
+                : { color: 'var(--text-secondary)' }
+            }
+          >
+            <Network size={16} strokeWidth={1.8} />
+            마인드맵
+          </Link>
+          <Link
+            href="/projects"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+            style={
+              pathname.startsWith('/projects')
+                ? { backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }
+                : { color: 'var(--text-secondary)' }
+            }
+          >
+            <FolderKanban size={16} strokeWidth={1.8} />
+            프로젝트
+          </Link>
+          <Link
+            href="/news"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+            style={
+              pathname === '/news'
+                ? { backgroundColor: '#DCFCE7', color: '#16A34A' }
+                : { color: 'var(--text-secondary)' }
+            }
+          >
+            <Newspaper size={16} strokeWidth={1.8} />
+            뉴스 & 링크
           </Link>
         </div>
       </nav>
