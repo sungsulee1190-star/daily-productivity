@@ -5,6 +5,7 @@ import { persist } from 'zustand/middleware'
 
 export type ProjectType = 'dev' | 'personal'
 export type ProjectStatus = 'active' | 'paused' | 'completed'
+export type WorkflowStatus = 'draft' | 'pending_review' | 'in_progress' | 'completed' | 'paused'
 
 export interface PRD {
   background: string
@@ -20,6 +21,7 @@ export interface Project {
   title: string
   type: ProjectType
   status: ProjectStatus
+  workflowStatus: WorkflowStatus
   ideaDump: string
   prd: PRD
   createdAt: string
@@ -28,7 +30,7 @@ export interface Project {
 
 interface ProjectStore {
   projects: Project[]
-  addProject: (title: string, type: ProjectType) => string
+  addProject: (title: string, type: ProjectType, idea?: string) => string
   updateProject: (id: string, updates: Partial<Omit<Project, 'id' | 'prd'>>) => void
   updatePRD: (id: string, prd: Partial<PRD>) => void
   deleteProject: (id: string) => void
@@ -47,14 +49,19 @@ export const useProjectStore = create<ProjectStore>()(
   persist(
     (set) => ({
       projects: [],
-      addProject: (title, type) => {
+      addProject: (title, type, idea = '') => {
         const id = crypto.randomUUID()
         set((s) => ({
           projects: [
             ...s.projects,
             {
-              id, title, type, status: 'active',
-              ideaDump: '', prd: emptyPRD(),
+              id,
+              title,
+              type,
+              status: 'active',
+              workflowStatus: 'draft',
+              ideaDump: idea,
+              prd: emptyPRD(),
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
             },
@@ -79,6 +86,17 @@ export const useProjectStore = create<ProjectStore>()(
       deleteProject: (id) =>
         set((s) => ({ projects: s.projects.filter((p) => p.id !== id) })),
     }),
-    { name: 'daily-productivity-projects' }
+    {
+      name: 'daily-productivity-projects',
+      // migrate existing projects without workflowStatus
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.projects = state.projects.map((p) => ({
+            workflowStatus: p.status === 'completed' ? 'completed' : 'in_progress',
+            ...p,
+          }))
+        }
+      },
+    }
   )
 )

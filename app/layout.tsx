@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import Sidebar from '@/components/Sidebar'
+import MobileHeader from '@/components/MobileHeader'
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar'
 
 export const metadata: Metadata = {
@@ -35,7 +36,8 @@ export default function RootLayout({
         <ServiceWorkerRegistrar />
         <div className="flex min-h-screen">
           <Sidebar />
-          <main className="flex-1 overflow-auto" style={{ backgroundColor: 'var(--bg)' }}>
+          <main className="flex-1 overflow-auto min-w-0" style={{ backgroundColor: 'var(--bg)' }}>
+            <MobileHeader />
             {children}
           </main>
         </div>
