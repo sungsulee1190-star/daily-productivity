@@ -92,8 +92,8 @@ export const useProjectStore = create<ProjectStore>()(
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.projects = state.projects.map((p) => ({
-            workflowStatus: p.status === 'completed' ? 'completed' : 'in_progress',
             ...p,
+            workflowStatus: p.workflowStatus ?? (p.status === 'completed' ? 'completed' : 'in_progress'),
           }))
         }
       },
