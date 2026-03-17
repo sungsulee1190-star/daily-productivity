@@ -10,6 +10,7 @@ export default function MigrationBanner() {
   const { user } = useAuth()
   const [bannerState, setBannerState] = useState<BannerState>('idle')
   const [migratedCount, setMigratedCount] = useState(0)
+  const [errorMsg, setErrorMsg] = useState('')
 
   useEffect(() => {
     if (!user) return
@@ -34,8 +35,11 @@ export default function MigrationBanner() {
         } else {
           setBannerState('hidden')
         }
-      } catch {
-        if (!cancelled) setBannerState('error')
+      } catch (e) {
+        if (!cancelled) {
+          setErrorMsg(e instanceof Error ? e.message : String(e))
+          setBannerState('error')
+        }
       }
     }
 
@@ -95,10 +99,10 @@ export default function MigrationBanner() {
         </>
       )}
       {bannerState === 'error' && (
-        <>
-          <span>⚠</span>
-          데이터 이전 실패 — 새로고침 후 다시 시도해주세요
-        </>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <span>⚠ 데이터 이전 실패</span>
+          {errorMsg && <span style={{ fontSize: '12px', opacity: 0.8 }}>{errorMsg}</span>}
+        </div>
       )}
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
