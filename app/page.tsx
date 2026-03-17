@@ -10,6 +10,7 @@ import type { Todo } from '@/store/todoStore'
 import { format } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import AuthGate from '@/components/auth/AuthGate'
+import MigrationBanner from '@/components/MigrationBanner'
 
 const DEFAULT_VISIBLE = 8
 
@@ -123,6 +124,7 @@ export default function HomePage() {
 
   return (
     <AuthGate>
+      <MigrationBanner />
     <div className="max-w-2xl mx-auto px-6 py-8">
       <div className="flex items-start justify-between mb-6">
         <div>
