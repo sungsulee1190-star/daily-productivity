@@ -3,6 +3,7 @@ import './globals.css'
 import Sidebar from '@/components/Sidebar'
 import MobileHeader from '@/components/MobileHeader'
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar'
+import { AuthProvider } from '@/lib/auth-context'
 
 export const metadata: Metadata = {
   title: '데일리 — 일상 생산성 앱',
@@ -33,14 +34,16 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
       </head>
       <body>
-        <ServiceWorkerRegistrar />
-        <div className="flex min-h-screen">
-          <Sidebar />
-          <main className="flex-1 overflow-auto min-w-0" style={{ backgroundColor: 'var(--bg)' }}>
-            <MobileHeader />
-            {children}
-          </main>
-        </div>
+        <AuthProvider>
+          <ServiceWorkerRegistrar />
+          <div className="flex min-h-screen">
+            <Sidebar />
+            <main className="flex-1 overflow-auto min-w-0" style={{ backgroundColor: 'var(--bg)' }}>
+              <MobileHeader />
+              {children}
+            </main>
+          </div>
+        </AuthProvider>
       </body>
     </html>
   )
