@@ -85,7 +85,7 @@ export async function migrateLocalDataToSupabase(
       title: t.title,
       completed: t.completed,
       priority: t.priority,
-      due_date: t.deadline ?? null,
+      due_date: t.deadline || null,
     }))
 
     const { error } = await supabase.from('todos').upsert(todoRows, { onConflict: 'id' })
