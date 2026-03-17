@@ -88,10 +88,9 @@ export async function migrateLocalDataToSupabase(
       due_date: t.deadline ?? null,
     }))
 
-    const { error } = await supabase.from('todos').insert(todoRows)
-    if (!error) {
-      migratedCount += localTodos.length
-    }
+    const { error } = await supabase.from('todos').upsert(todoRows, { onConflict: 'id' })
+    if (error) throw new Error(`todos insert failed: ${error.message}`)
+    migratedCount += localTodos.length
   }
 
   // Migrate projects
@@ -108,12 +107,12 @@ export async function migrateLocalDataToSupabase(
       updated_at: p.updatedAt,
     }))
 
-    const { error } = await supabase.from('projects').insert(projectRows)
-    if (!error) {
-      migratedCount += localProjects.length
-    }
+    const { error } = await supabase.from('projects').upsert(projectRows, { onConflict: 'id' })
+    if (error) throw new Error(`projects insert failed: ${error.message}`)
+    migratedCount += localProjects.length
   }
 
+  // Only mark done if everything succeeded
   localStorage.setItem('supabase-migration-done', 'true')
   return { migrated: migratedCount > 0, count: migratedCount }
 }

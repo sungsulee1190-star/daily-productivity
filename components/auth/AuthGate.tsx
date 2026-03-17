@@ -1,10 +1,19 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useAuth } from '@/lib/auth-context'
+import { useTodoStore } from '@/store/todoStore'
 import LoginPage from './LoginPage'
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
+  const { fetchTodos } = useTodoStore()
+
+  useEffect(() => {
+    if (user) {
+      fetchTodos(user.id)
+    }
+  }, [user?.id])
 
   if (loading) {
     return (

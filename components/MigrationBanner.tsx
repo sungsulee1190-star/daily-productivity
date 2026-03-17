@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { migrateLocalDataToSupabase } from '@/lib/migrate-local-data'
 
-type BannerState = 'idle' | 'migrating' | 'done' | 'hidden'
+type BannerState = 'idle' | 'migrating' | 'done' | 'error' | 'hidden'
 
 export default function MigrationBanner() {
   const { user } = useAuth()
@@ -35,8 +35,7 @@ export default function MigrationBanner() {
           setBannerState('hidden')
         }
       } catch {
-        // Silent failure — don't block the user
-        if (!cancelled) setBannerState('hidden')
+        if (!cancelled) setBannerState('error')
       }
     }
 
@@ -49,6 +48,10 @@ export default function MigrationBanner() {
 
   if (bannerState === 'idle' || bannerState === 'hidden') return null
 
+  const bgColor = bannerState === 'done' ? '#DCFCE7' : bannerState === 'error' ? '#FEE2E2' : 'var(--surface)'
+  const borderColor = bannerState === 'done' ? '#86EFAC' : bannerState === 'error' ? '#FCA5A5' : 'var(--border)'
+  const textColor = bannerState === 'done' ? '#15803D' : bannerState === 'error' ? '#DC2626' : 'var(--text-secondary)'
+
   return (
     <div
       style={{
@@ -58,9 +61,9 @@ export default function MigrationBanner() {
         zIndex: 9999,
         padding: '12px 18px',
         borderRadius: '12px',
-        backgroundColor: bannerState === 'done' ? '#DCFCE7' : 'var(--surface)',
-        border: `1px solid ${bannerState === 'done' ? '#86EFAC' : 'var(--border)'}`,
-        color: bannerState === 'done' ? '#15803D' : 'var(--text-secondary)',
+        backgroundColor: bgColor,
+        border: `1px solid ${borderColor}`,
+        color: textColor,
         fontSize: '14px',
         fontWeight: 500,
         boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
@@ -89,6 +92,12 @@ export default function MigrationBanner() {
         <>
           <span>✓</span>
           데이터 이전 완료 ({migratedCount}개 항목)
+        </>
+      )}
+      {bannerState === 'error' && (
+        <>
+          <span>⚠</span>
+          데이터 이전 실패 — 새로고침 후 다시 시도해주세요
         </>
       )}
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
