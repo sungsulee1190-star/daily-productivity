@@ -28,6 +28,7 @@ const workNavItems = [
 const personalNavItems = [
   { href: '/', label: '홈', icon: Home },
   { href: '/projects', label: '프로젝트', icon: FolderKanban },
+  { href: '/ideas', label: '아이디어', icon: Bot },
   { href: '/brainstorm', label: '브레인스토밍', icon: Lightbulb },
   { href: '/mindmap', label: '마인드맵', icon: Network },
   { href: '/news', label: '뉴스 & 링크', icon: Newspaper },

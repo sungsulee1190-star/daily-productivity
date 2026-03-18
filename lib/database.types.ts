@@ -197,6 +197,45 @@ export interface Database {
         }
         Relationships: []
       }
+      ideas: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          description: string | null
+          cli_tool: 'claude' | 'codex' | 'gemini' | 'auto'
+          status: 'inbox' | 'ready' | 'in_progress' | 'done'
+          priority: 'low' | 'medium' | 'high'
+          generated_script: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          description?: string | null
+          cli_tool?: 'claude' | 'codex' | 'gemini' | 'auto'
+          status?: 'inbox' | 'ready' | 'in_progress' | 'done'
+          priority?: 'low' | 'medium' | 'high'
+          generated_script?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          description?: string | null
+          cli_tool?: 'claude' | 'codex' | 'gemini' | 'auto'
+          status?: 'inbox' | 'ready' | 'in_progress' | 'done'
+          priority?: 'low' | 'medium' | 'high'
+          generated_script?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
