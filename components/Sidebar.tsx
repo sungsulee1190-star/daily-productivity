@@ -9,7 +9,7 @@ import {
   Network, ChevronLeft, ChevronRight, X,
   List, Sun, Bot, PlusCircle,
   Clock, PlayCircle, CheckCircle2,
-  CalendarDays, Link2, Plus, Trash2,
+  CalendarDays, Link2, Plus, Trash2, ClipboardList,
 } from 'lucide-react'
 import { useTodoStore } from '@/store/todoStore'
 import { useUIStore } from '@/store/uiStore'
@@ -20,6 +20,8 @@ const workNavItems = [
   { href: '/todo/daily', label: '오늘 할 일', icon: Sun },
   { href: '/todo/all', label: '전체 목록', icon: List },
   { href: '/routine', label: '루틴', icon: RotateCcw },
+  { href: '/tracker', label: 'F/U 트래커', icon: ClipboardList },
+  { href: '/links', label: '링크', icon: Link2 },
   { href: '/board', label: '칸반 보드', icon: Kanban },
   { href: '/calendar', label: '캘린더', icon: CalendarDays },
   { href: '/archive', label: '완료 아카이브', icon: Archive },

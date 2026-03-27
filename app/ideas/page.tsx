@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import {
   Lightbulb, Plus, Trash2, ChevronDown, ChevronUp,
   Terminal, Clock, PlayCircle, CheckCircle2, Inbox,
-  Sparkles, Copy, Check,
+  Sparkles, Copy, Check, Rocket, Loader2,
 } from 'lucide-react'
 import { useIdeaStore, Idea, CliTool, IdeaStatus, IdeaPriority } from '@/store/ideaStore'
+import { useProjectStore } from '@/store/projectStore'
 import { useAuth } from '@/lib/auth-context'
 
 type Tab = 'all' | 'inbox' | 'ready' | 'in_progress' | 'done'
@@ -173,6 +174,10 @@ function IdeaCard({ idea, onUpdate, onDelete }: IdeaCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [showScript, setShowScript] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [genError, setGenError] = useState<string | null>(null)
+  const router = useRouter()
+  const { addProject, updatePRD } = useProjectStore()
   const cli = CLI_TOOL_CONFIG[idea.cli_tool]
   const pri = PRIORITY_CONFIG[idea.priority]
   const nextAction = STATUS_NEXT[idea.status]
@@ -182,6 +187,39 @@ function IdeaCard({ idea, onUpdate, onDelete }: IdeaCardProps) {
     await navigator.clipboard.writeText(script)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleGenerateProject = async () => {
+    const apiKey = localStorage.getItem('openai-api-key')
+    if (!apiKey) {
+      setGenError('OpenAI API 키가 없습니다. 설정 페이지에서 API 키를 등록해주세요.')
+      return
+    }
+    setGenerating(true)
+    setGenError(null)
+    try {
+      const res = await fetch('/api/openai/generate-prd', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: idea.title,
+          description: idea.description ?? '',
+          apiKey,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setGenError(data.error ?? '오류가 발생했습니다')
+        return
+      }
+      const projectId = addProject(data.projectTitle ?? idea.title, 'dev', idea.description ?? '')
+      updatePRD(projectId, data.prd)
+      router.push(`/projects/${projectId}`)
+    } catch {
+      setGenError('네트워크 오류가 발생했습니다')
+    } finally {
+      setGenerating(false)
+    }
   }
 
   return (
@@ -290,6 +328,17 @@ function IdeaCard({ idea, onUpdate, onDelete }: IdeaCardProps) {
                 받은함으로 되돌리기
               </button>
             )}
+            {idea.status !== 'done' && (
+              <button
+                onClick={handleGenerateProject}
+                disabled={generating}
+                className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1 disabled:opacity-60"
+                style={{ backgroundColor: '#ede9fe', color: '#7c3aed' }}
+              >
+                {generating ? <Loader2 size={11} className="animate-spin" /> : <Rocket size={11} />}
+                {generating ? '생성 중...' : '프로젝트로 생성'}
+              </button>
+            )}
             <button
               onClick={() => onDelete(idea.id)}
               className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1"
@@ -299,6 +348,9 @@ function IdeaCard({ idea, onUpdate, onDelete }: IdeaCardProps) {
               삭제
             </button>
           </div>
+          {genError && (
+            <p className="text-xs mt-1" style={{ color: '#dc2626' }}>{genError}</p>
+          )}
 
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
             {new Date(idea.created_at).toLocaleDateString('ko-KR', {
@@ -311,7 +363,7 @@ function IdeaCard({ idea, onUpdate, onDelete }: IdeaCardProps) {
   )
 }
 
-export default function IdeasPage() {
+function IdeasContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { user } = useAuth()
@@ -431,5 +483,20 @@ export default function IdeasPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function IdeasPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex-1 min-w-0 p-4 md:p-6 max-w-3xl mx-auto w-full">
+        <div className="animate-pulse space-y-4">
+          <div className="h-7 w-32 rounded-xl" style={{ backgroundColor: 'var(--border)' }} />
+          <div className="h-10 w-full rounded-xl" style={{ backgroundColor: 'var(--border)' }} />
+        </div>
+      </div>
+    }>
+      <IdeasContent />
+    </Suspense>
   )
 }

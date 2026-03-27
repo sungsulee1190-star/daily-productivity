@@ -1,7 +1,107 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { Eye, EyeOff, Check, Trash2 } from 'lucide-react'
+
+const OPENAI_KEY_STORAGE = 'openai-api-key'
+
 export default function SettingsPage() {
+  const [apiKey, setApiKey] = useState('')
+  const [showKey, setShowKey] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [hasKey, setHasKey] = useState(false)
+
+  useEffect(() => {
+    const stored = localStorage.getItem(OPENAI_KEY_STORAGE)
+    if (stored) {
+      setHasKey(true)
+      setApiKey(stored)
+    }
+  }, [])
+
+  const handleSave = () => {
+    if (!apiKey.trim()) return
+    localStorage.setItem(OPENAI_KEY_STORAGE, apiKey.trim())
+    setHasKey(true)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  const handleDelete = () => {
+    localStorage.removeItem(OPENAI_KEY_STORAGE)
+    setApiKey('')
+    setHasKey(false)
+  }
+
   return (
-    <div className="max-w-2xl mx-auto px-6 py-8">
+    <div className="max-w-2xl mx-auto px-6 py-8 space-y-6">
       <h1 className="text-xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>설정</h1>
+
+      {/* OpenAI API Key */}
+      <div className="rounded-2xl p-6" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+            OpenAI API 키
+          </h2>
+          {hasKey && (
+            <span
+              className="flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: '#dcfce7', color: '#16a34a' }}
+            >
+              <Check size={11} />
+              연결됨
+            </span>
+          )}
+        </div>
+        <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
+          아이디어를 프로젝트로 변환할 때 사용됩니다
+        </p>
+        <div className="flex gap-2 mb-3">
+          <div className="relative flex-1">
+            <input
+              type={showKey ? 'text' : 'password'}
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="sk-..."
+              className="w-full rounded-xl px-3 py-2.5 text-sm outline-none pr-10"
+              style={{ backgroundColor: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowKey((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              {showKey ? <EyeOff size={15} /> : <Eye size={15} />}
+            </button>
+          </div>
+          <button
+            onClick={handleSave}
+            className="px-4 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center gap-1.5"
+            style={saved
+              ? { backgroundColor: '#dcfce7', color: '#16a34a' }
+              : { backgroundColor: 'var(--accent)', color: 'white' }
+            }
+          >
+            {saved ? <><Check size={14} /> 저장됨</> : '저장'}
+          </button>
+          {hasKey && (
+            <button
+              onClick={handleDelete}
+              className="p-2.5 rounded-xl transition-all"
+              style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}
+              title="키 삭제"
+            >
+              <Trash2 size={15} />
+            </button>
+          )}
+        </div>
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          * API 키는 브라우저 로컬 스토리지에만 저장되며 서버로 전송되지 않습니다.
+        </p>
+      </div>
+
+      {/* Google Calendar */}
       <div className="rounded-2xl p-6" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
         <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-secondary)' }}>
           Google Calendar 연동

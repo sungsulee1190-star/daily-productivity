@@ -17,14 +17,10 @@ interface LinkStore {
   deleteLink: (id: string) => void
 }
 
-const defaultLinks: QuickLink[] = [
-  { id: 'default-sheets', title: '구글 시트', url: 'https://sheets.google.com', emoji: '📊' },
-]
-
 export const useLinkStore = create<LinkStore>()(
   persist(
     (set) => ({
-      links: defaultLinks,
+      links: [],
       addLink: (link) =>
         set((s) => ({
           links: [...s.links, { ...link, id: crypto.randomUUID() }],
@@ -38,6 +34,13 @@ export const useLinkStore = create<LinkStore>()(
           links: s.links.filter((l) => l.id !== id),
         })),
     }),
-    { name: 'daily-links' }
+    {
+      name: 'daily-links',
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.links = state.links.filter((l) => l.id !== 'default-sheets')
+        }
+      },
+    }
   )
 )
