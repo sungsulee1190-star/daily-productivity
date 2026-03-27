@@ -33,6 +33,9 @@ const personalNavItems = [
   { href: '/ideas', label: '아이디어', icon: Bot },
   { href: '/brainstorm', label: '브레인스토밍', icon: Lightbulb },
   { href: '/mindmap', label: '마인드맵', icon: Network },
+  { href: '/routine', label: '루틴', icon: RotateCcw },
+  { href: '/tracker', label: 'F/U 트래커', icon: ClipboardList },
+  { href: '/links', label: '링크', icon: Link2 },
   { href: '/news', label: '뉴스 & 링크', icon: Newspaper },
 ]
 
