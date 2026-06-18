@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash \"C:/Users/Hansol/.claude/plugins/marketplaces/oh-my-claudecode/scripts/setup-progress.sh\" resume)"
+    ]
+  }
+}
