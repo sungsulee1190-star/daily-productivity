@@ -17,6 +17,12 @@ export interface Database {
           completed: boolean
           priority: 'low' | 'medium' | 'high'
           due_date: string | null
+          memo: string | null
+          tags: string[]
+          clip: 'work' | 'personal'
+          completed_at: string | null
+          subtasks: Json
+          kanban_status: 'backlog' | 'inprogress' | 'done' | 'hold'
           created_at: string
           updated_at: string
         }
@@ -27,6 +33,12 @@ export interface Database {
           completed?: boolean
           priority?: 'low' | 'medium' | 'high'
           due_date?: string | null
+          memo?: string | null
+          tags?: string[]
+          clip?: 'work' | 'personal'
+          completed_at?: string | null
+          subtasks?: Json
+          kanban_status?: 'backlog' | 'inprogress' | 'done' | 'hold'
           created_at?: string
           updated_at?: string
         }
@@ -37,6 +49,12 @@ export interface Database {
           completed?: boolean
           priority?: 'low' | 'medium' | 'high'
           due_date?: string | null
+          memo?: string | null
+          tags?: string[]
+          clip?: 'work' | 'personal'
+          completed_at?: string | null
+          subtasks?: Json
+          kanban_status?: 'backlog' | 'inprogress' | 'done' | 'hold'
           created_at?: string
           updated_at?: string
         }
@@ -288,6 +306,45 @@ export interface Database {
           name?: string
           month?: string
           items?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      routines: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          type: 'daily' | 'weekly' | 'monthly'
+          checked_weeks: string[]
+          checked_months: string[]
+          checked_days: string[]
+          hidden: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          type: 'daily' | 'weekly' | 'monthly'
+          checked_weeks?: string[]
+          checked_months?: string[]
+          checked_days?: string[]
+          hidden?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          type?: 'daily' | 'weekly' | 'monthly'
+          checked_weeks?: string[]
+          checked_months?: string[]
+          checked_days?: string[]
+          hidden?: boolean
           created_at?: string
           updated_at?: string
         }

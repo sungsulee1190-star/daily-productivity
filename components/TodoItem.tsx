@@ -23,12 +23,14 @@ const priorityColor: Record<string, string> = {
 }
 
 export default function TodoItem({ todo, onEdit }: Props) {
-  const { completeTodo, uncompleteTodo, deleteTodo, addSubtask, toggleSubtask, deleteSubtask } = useTodoStore()
+  const { completeTodo, uncompleteTodo, deleteTodo, addSubtask, updateSubtask, toggleSubtask, deleteSubtask } = useTodoStore()
   const [showMemo, setShowMemo] = useState(false)
   const [showSubtasks, setShowSubtasks] = useState(true)
   const [popping, setPopping] = useState(false)
   const [addingSubtask, setAddingSubtask] = useState(false)
   const [subtaskInput, setSubtaskInput] = useState('')
+  const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null)
+  const [editingSubtaskTitle, setEditingSubtaskTitle] = useState('')
 
   const subtasks = todo.subtasks ?? []
   const subtaskDone = subtasks.filter((s) => s.completed).length
@@ -53,6 +55,20 @@ export default function TodoItem({ todo, onEdit }: Props) {
     setSubtaskInput('')
     setAddingSubtask(false)
     setShowSubtasks(true)
+  }
+
+  function startEditSubtask(id: string, title: string) {
+    setEditingSubtaskId(id)
+    setEditingSubtaskTitle(title)
+  }
+
+  function handleUpdateSubtask(e: React.SyntheticEvent, subtaskId: string) {
+    e.preventDefault()
+    const nextTitle = editingSubtaskTitle.trim()
+    if (!nextTitle) return
+    updateSubtask(todo.id, subtaskId, nextTitle)
+    setEditingSubtaskId(null)
+    setEditingSubtaskTitle('')
   }
 
   return (
@@ -257,15 +273,47 @@ export default function TodoItem({ todo, onEdit }: Props) {
                       </svg>
                     )}
                   </button>
-                  <span
-                    className="flex-1 text-xs"
-                    style={{
-                      color: sub.completed ? 'var(--text-muted)' : 'var(--text-secondary)',
-                      textDecoration: sub.completed ? 'line-through' : 'none',
-                    }}
+                  {editingSubtaskId === sub.id ? (
+                    <form
+                      onSubmit={(e) => handleUpdateSubtask(e, sub.id)}
+                      className="flex-1 flex items-center gap-1"
+                    >
+                      <input
+                        autoFocus
+                        value={editingSubtaskTitle}
+                        onChange={(e) => setEditingSubtaskTitle(e.target.value)}
+                        onBlur={(e) => handleUpdateSubtask(e, sub.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') {
+                            setEditingSubtaskId(null)
+                            setEditingSubtaskTitle('')
+                          }
+                        }}
+                        className="w-full text-xs outline-none bg-transparent"
+                        style={{ color: 'var(--text-primary)' }}
+                      />
+                    </form>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => startEditSubtask(sub.id, sub.title)}
+                      className="flex-1 text-xs text-left"
+                      style={{
+                        color: sub.completed ? 'var(--text-muted)' : 'var(--text-primary)',
+                        textDecoration: sub.completed ? 'line-through' : 'none',
+                      }}
+                    >
+                      {sub.title}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => startEditSubtask(sub.id, sub.title)}
+                    className="opacity-0 group-hover/sub:opacity-100 transition-opacity"
+                    style={{ color: 'var(--text-muted)' }}
+                    title="서브태스크 수정"
                   >
-                    {sub.title}
-                  </span>
+                    <Pencil size={11} />
+                  </button>
                   <button
                     onClick={() => deleteSubtask(todo.id, sub.id)}
                     className="opacity-0 group-hover/sub:opacity-100 transition-opacity"

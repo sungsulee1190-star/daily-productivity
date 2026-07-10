@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { format, startOfWeek, startOfMonth, endOfMonth, addDays } from 'date-fns'
 import { ko } from 'date-fns/locale'
+import { useAuth } from '@/lib/auth-context'
+import { createClient } from '@/lib/supabase'
 
 interface Routine {
   id: string
@@ -19,30 +21,85 @@ interface Routine {
 
 interface RoutineStore {
   routines: Routine[]
+  userId: string | null
+  fetchRoutines: (userId: string) => Promise<void>
   addRoutine: (title: string, type: 'weekly' | 'monthly' | 'daily') => void
   toggleRoutine: (id: string, key?: string) => void
   hideRoutine: (id: string) => void
 }
 
+async function syncRoutineToSupabase(routine: Routine, userId: string) {
+  try {
+    const supabase = createClient()
+    await supabase.from('routines').upsert({
+      id: routine.id,
+      user_id: userId,
+      title: routine.title,
+      type: routine.type,
+      checked_weeks: routine.checkedWeeks,
+      checked_months: routine.checkedMonths,
+      checked_days: routine.checkedDays,
+      hidden: routine.hidden,
+      updated_at: new Date().toISOString(),
+    })
+  } catch {
+    // Local fallback remains available through persisted Zustand state.
+  }
+}
+
+function syncRoutineById(id: string, get: () => RoutineStore) {
+  const { userId, routines } = get()
+  if (!userId) return
+  const routine = routines.find((r) => r.id === id)
+  if (routine) syncRoutineToSupabase(routine, userId)
+}
+
 const useRoutineStore = create<RoutineStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       routines: [],
-      addRoutine: (title, type) =>
-        set((s) => ({
-          routines: [
-            ...s.routines,
-            {
-              id: crypto.randomUUID(),
-              title,
-              type,
-              checkedWeeks: [],
-              checkedMonths: [],
-              checkedDays: [],
-              hidden: false,
-            },
-          ],
-        })),
+      userId: null,
+      fetchRoutines: async (userId) => {
+        set({ userId })
+        try {
+          const supabase = createClient()
+          const { data } = await supabase
+            .from('routines')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: true })
+
+          if (data) {
+            set({
+              routines: data.map((row) => ({
+                id: row.id,
+                title: row.title,
+                type: row.type,
+                checkedWeeks: row.checked_weeks ?? [],
+                checkedMonths: row.checked_months ?? [],
+                checkedDays: row.checked_days ?? [],
+                hidden: row.hidden,
+              })),
+            })
+          }
+        } catch {
+          // keep local fallback
+        }
+      },
+      addRoutine: (title, type) => {
+        const newRoutine = {
+          id: crypto.randomUUID(),
+          title,
+          type,
+          checkedWeeks: [],
+          checkedMonths: [],
+          checkedDays: [],
+          hidden: false,
+        }
+        set((s) => ({ routines: [...s.routines, newRoutine] }))
+        const { userId } = get()
+        if (userId) syncRoutineToSupabase(newRoutine, userId)
+      },
       toggleRoutine: (id, key) => {
         const now = new Date()
         const weekKey = key ?? `${format(now, 'yyyy')}-W${format(now, 'II')}`
@@ -66,9 +123,12 @@ const useRoutineStore = create<RoutineStore>()(
             }
           }),
         }))
+        syncRoutineById(id, get)
       },
-      hideRoutine: (id) =>
-        set((s) => ({ routines: s.routines.map((r) => r.id === id ? { ...r, hidden: true } : r) })),
+      hideRoutine: (id) => {
+        set((s) => ({ routines: s.routines.map((r) => r.id === id ? { ...r, hidden: true } : r) }))
+        syncRoutineById(id, get)
+      },
     }),
     {
       name: 'daily-productivity-routines',
@@ -112,7 +172,8 @@ function getMonthWeeks(year: number, month: number): Array<{ label: string; key:
 }
 
 export default function RoutinePage() {
-  const { routines, addRoutine, toggleRoutine, hideRoutine } = useRoutineStore()
+  const { user } = useAuth()
+  const { routines, addRoutine, toggleRoutine, hideRoutine, fetchRoutines } = useRoutineStore()
   const [showForm, setShowForm] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [newType, setNewType] = useState<'weekly' | 'monthly' | 'daily'>('weekly')
@@ -128,6 +189,10 @@ export default function RoutinePage() {
   const dailyRoutines = routines.filter((r) => r.type === 'daily' && !r.hidden)
 
   const monthWeeks = getMonthWeeks(currentYear, currentMonth)
+
+  useEffect(() => {
+    if (user) fetchRoutines(user.id)
+  }, [user?.id, fetchRoutines])
 
   function isWeeklyChecked(r: Routine) {
     return r.checkedWeeks.includes(weekKey)
