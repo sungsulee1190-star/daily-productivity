@@ -173,6 +173,7 @@ function getMonthWeeks(year: number, month: number): Array<{ label: string; key:
 
 export default function RoutinePage() {
   const { user } = useAuth()
+  const userId = user?.id
   const { routines, addRoutine, toggleRoutine, hideRoutine, fetchRoutines } = useRoutineStore()
   const [showForm, setShowForm] = useState(false)
   const [newTitle, setNewTitle] = useState('')
@@ -191,8 +192,8 @@ export default function RoutinePage() {
   const monthWeeks = getMonthWeeks(currentYear, currentMonth)
 
   useEffect(() => {
-    if (user) fetchRoutines(user.id)
-  }, [user?.id, fetchRoutines])
+    if (userId) fetchRoutines(userId)
+  }, [userId, fetchRoutines])
 
   function isWeeklyChecked(r: Routine) {
     return r.checkedWeeks.includes(weekKey)

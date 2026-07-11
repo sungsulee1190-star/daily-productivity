@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { createClient } from '@/lib/supabase'
+import type { Json } from '@/lib/database.types'
 
 export type ClipType = 'work' | 'personal'
 export type Priority = 'high' | 'medium' | 'low'
@@ -62,7 +63,7 @@ async function syncToSupabase(todo: Todo, userId: string) {
       tags: todo.tags,
       clip: todo.clip,
       completed_at: todo.completedAt ?? null,
-      subtasks: todo.subtasks,
+      subtasks: todo.subtasks as unknown as Json,
       kanban_status: todo.kanbanStatus,
       created_at: todo.createdAt,
       updated_at: new Date().toISOString(),
