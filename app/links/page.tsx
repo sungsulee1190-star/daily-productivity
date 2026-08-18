@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, ExternalLink, Pencil, Trash2, X, Check } from 'lucide-react'
 import { useLinkStore, QuickLink } from '@/store/linkStore'
+import { useAuth } from '@/lib/auth-context'
 
 const EMOJI_OPTIONS = ['🔗', '📊', '📄', '📁', '🌐', '📧', '📅', '💬', '🎯', '⚙️', '📝', '🔧']
 
@@ -190,8 +191,13 @@ function LinkCard({ link, onDelete, onUpdate }: LinkCardProps) {
 }
 
 export default function LinksPage() {
-  const { links, addLink, updateLink, deleteLink } = useLinkStore()
+  const { links, addLink, updateLink, deleteLink, fetchLinks } = useLinkStore()
   const [showForm, setShowForm] = useState(false)
+  const { user } = useAuth()
+
+  useEffect(() => {
+    if (user) fetchLinks(user.id)
+  }, [user?.id])
 
   return (
     <div className="flex-1 min-w-0 p-4 md:p-6 max-w-3xl mx-auto w-full">

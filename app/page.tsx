@@ -6,6 +6,8 @@ import { useTodoStore } from '@/store/todoStore'
 import TodoItem from '@/components/TodoItem'
 import TodoForm from '@/components/TodoForm'
 import ProgressCards from '@/components/ProgressCards'
+import HomeRoutineWidget from '@/components/home/HomeRoutineWidget'
+import HomeTrackerWidget from '@/components/home/HomeTrackerWidget'
 import type { Todo } from '@/store/todoStore'
 import { format } from 'date-fns'
 import { ko } from 'date-fns/locale'
@@ -125,92 +127,109 @@ export default function HomePage() {
   return (
     <AuthGate>
       <MigrationBanner />
-    <div className="max-w-2xl mx-auto px-6 py-8">
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
-            {format(today, 'yyyy년 M월 d일 EEEE', { locale: ko })}
-          </p>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-            {activeClip === 'work' ? '🏢 업무 클립' : '🏠 개인 클립'}
-          </h1>
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              오늘 {todayTodos.length}개 남음
-            </span>
-            {overdueTodos.length > 0 && (
-              <span
-                className="text-xs px-2 py-0.5 rounded-full font-medium"
-                style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}
-              >
-                {overdueTodos.length}개 기한 초과
+      <div className="max-w-6xl mx-auto px-4 md:px-8 py-6 md:py-8">
+        {/* Top Header */}
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
+              {format(today, 'yyyy년 M월 d일 EEEE', { locale: ko })}
+            </p>
+            <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              {activeClip === 'work' ? '🏢 업무 클립' : '🏠 개인 클립'}
+            </h1>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                오늘 {todayTodos.length}개 남음
               </span>
-            )}
-            {completedToday.length > 0 && (
-              <span
-                className="text-xs px-2 py-0.5 rounded-full font-medium"
-                style={{ backgroundColor: '#DCFCE7', color: '#16A34A' }}
+              {overdueTodos.length > 0 && (
+                <span
+                  className="text-xs px-2 py-0.5 rounded-full font-medium"
+                  style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}
+                >
+                  {overdueTodos.length}개 기한 초과
+                </span>
+              )}
+              {completedToday.length > 0 && (
+                <span
+                  className="text-xs px-2 py-0.5 rounded-full font-medium"
+                  style={{ backgroundColor: '#DCFCE7', color: '#16A34A' }}
+                >
+                  오늘 {completedToday.length}개 완료
+                </span>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-1.5 text-sm px-4 py-2.5 rounded-xl font-medium flex-shrink-0 shadow-sm"
+            style={{ backgroundColor: 'var(--accent)', color: 'white' }}
+          >
+            <Plus size={15} />
+            할 일 추가
+          </button>
+        </div>
+
+        {/* Progress summary cards */}
+        <ProgressCards />
+
+        {/* 2-Column Responsive Dashboard Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Left Column: Tasks / Clips (7 cols) */}
+          <div className="lg:col-span-7 space-y-2">
+            <TodoSection title="⚠️ 기한 초과" todos={overdueTodos} onEdit={openEdit} />
+
+            {dueTodayTodos.length === 0 && overdueTodos.length === 0 ? (
+              <div
+                className="flex flex-col items-center justify-center py-12 rounded-2xl text-center mb-6"
+                style={{ backgroundColor: 'var(--surface)', border: '1.5px dashed var(--border)' }}
               >
-                오늘 {completedToday.length}개 완료
-              </span>
+                <Calendar size={32} strokeWidth={1.2} style={{ color: 'var(--text-muted)' }} className="mb-3" />
+                <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  오늘 할 일이 없습니다
+                </p>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                  할 일을 추가해보세요
+                </p>
+              </div>
+            ) : (
+              <TodoSection title="🗓 오늘 할 일" todos={dueTodayTodos} onEdit={openEdit} />
             )}
+
+            <TodoSection
+              title="📅 다가오는 일정"
+              todos={upcomingTodos}
+              onEdit={openEdit}
+              defaultExpanded={upcomingTodos.length <= DEFAULT_VISIBLE}
+            />
+
+            <TodoSection
+              title="✅ 오늘 완료"
+              todos={completedToday}
+              onEdit={openEdit}
+              defaultExpanded={false}
+            />
+          </div>
+
+          {/* Right Column: Routine & F/U Tracker Widgets (5 cols) */}
+          <div className="lg:col-span-5 space-y-5">
+            {/* 오늘의 루틴 위젯 */}
+            <HomeRoutineWidget />
+
+            {/* F/U 트래커 위젯 */}
+            <HomeTrackerWidget />
           </div>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-1.5 text-sm px-4 py-2 rounded-xl font-medium flex-shrink-0"
-          style={{ backgroundColor: 'var(--accent)', color: 'white' }}
-        >
-          <Plus size={15} />
-          추가
-        </button>
+
+        {showForm && (
+          <TodoForm
+            onClose={() => {
+              setShowForm(false)
+              setEditTodo(null)
+            }}
+            editTodo={editTodo}
+          />
+        )}
       </div>
-
-      <ProgressCards />
-
-      <TodoSection title="⚠️ 기한 초과" todos={overdueTodos} onEdit={openEdit} />
-
-      {dueTodayTodos.length === 0 && overdueTodos.length === 0 ? (
-        <div
-          className="flex flex-col items-center justify-center py-12 rounded-2xl text-center mb-6"
-          style={{ backgroundColor: 'var(--surface)', border: '1.5px dashed var(--border)' }}
-        >
-          <Calendar size={32} strokeWidth={1.2} style={{ color: 'var(--text-muted)' }} className="mb-3" />
-          <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-            오늘 할 일이 없습니다
-          </p>
-          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-            할 일을 추가해보세요
-          </p>
-        </div>
-      ) : (
-        <TodoSection title="🗓 오늘 할 일" todos={dueTodayTodos} onEdit={openEdit} />
-      )}
-
-      <TodoSection
-        title="📅 다가오는 일정"
-        todos={upcomingTodos}
-        onEdit={openEdit}
-        defaultExpanded={upcomingTodos.length <= DEFAULT_VISIBLE}
-      />
-
-      <TodoSection
-        title="✅ 오늘 완료"
-        todos={completedToday}
-        onEdit={openEdit}
-        defaultExpanded={false}
-      />
-
-      {showForm && (
-        <TodoForm
-          onClose={() => {
-            setShowForm(false)
-            setEditTodo(null)
-          }}
-          editTodo={editTodo}
-        />
-      )}
-    </div>
     </AuthGate>
   )
 }

@@ -9,6 +9,8 @@ export interface Subtask {
   id: string
   title: string
   completed: boolean
+  startDate?: string
+  dueDate?: string
   completedAt?: string
 }
 
@@ -16,6 +18,7 @@ export interface Todo {
   id: string
   title: string
   memo?: string
+  startDate?: string // ISO date string (YYYY-MM-DD)
   deadline?: string // ISO date string (YYYY-MM-DD) or datetime
   priority: Priority
   tags: string[]
@@ -42,7 +45,8 @@ interface TodoStore {
   deleteTodo: (id: string) => void
   completeTodo: (id: string) => void
   uncompleteTodo: (id: string) => void
-  addSubtask: (todoId: string, title: string) => void
+  addSubtask: (todoId: string, title: string, startDate?: string, dueDate?: string) => void
+  updateSubtask: (todoId: string, subtaskId: string, updates: Partial<Subtask>) => void
   toggleSubtask: (todoId: string, subtaskId: string) => void
   deleteSubtask: (todoId: string, subtaskId: string) => void
 }
@@ -111,6 +115,7 @@ export const useTodoStore = create<TodoStore>()(
                 deadline: row.due_date ?? undefined,
                 createdAt: row.created_at,
                 // Preserve extended local fields or fallback to defaults
+                startDate: local?.startDate,
                 memo: local?.memo,
                 tags: local?.tags ?? [],
                 clip: local?.clip ?? 'work',
@@ -190,7 +195,7 @@ export const useTodoStore = create<TodoStore>()(
         }
       },
 
-      addSubtask: (todoId, title) =>
+      addSubtask: (todoId, title, startDate, dueDate) =>
         set((state) => ({
           todos: state.todos.map((t) =>
             t.id === todoId
@@ -198,8 +203,28 @@ export const useTodoStore = create<TodoStore>()(
                   ...t,
                   subtasks: [
                     ...(t.subtasks ?? []),
-                    { id: crypto.randomUUID(), title, completed: false },
+                    {
+                      id: crypto.randomUUID(),
+                      title,
+                      completed: false,
+                      startDate: startDate || undefined,
+                      dueDate: dueDate || undefined,
+                    },
                   ],
+                }
+              : t
+          ),
+        })),
+
+      updateSubtask: (todoId, subtaskId, updates) =>
+        set((state) => ({
+          todos: state.todos.map((t) =>
+            t.id === todoId
+              ? {
+                  ...t,
+                  subtasks: (t.subtasks ?? []).map((s) =>
+                    s.id === subtaskId ? { ...s, ...updates } : s
+                  ),
                 }
               : t
           ),

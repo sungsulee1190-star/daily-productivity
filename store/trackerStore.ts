@@ -12,6 +12,7 @@ export interface TrackerItem {
   title: string
   status: TrackerStatus
   assignee?: string
+  startDate?: string
   dueDate?: string
   notes?: string
   tags?: string[]
@@ -24,6 +25,8 @@ export interface TrackerSession {
   id: string
   name: string
   month: string
+  startDate?: string
+  endDate?: string
   items: TrackerItem[]
   createdAt: string
   updatedAt: string
@@ -33,7 +36,8 @@ interface TrackerStore {
   sessions: TrackerSession[]
   userId: string | null
   fetchSessions: (userId: string) => Promise<void>
-  addSession: (name: string, month: string) => string
+  addSession: (name: string, month: string, startDate?: string, endDate?: string) => string
+  updateSession: (id: string, updates: Partial<TrackerSession>) => void
   deleteSession: (id: string) => void
   addItem: (sessionId: string, item: Omit<TrackerItem, 'id' | 'createdAt' | 'updatedAt' | 'history'>) => void
   updateItem: (sessionId: string, itemId: string, updates: Partial<TrackerItem>) => void
@@ -75,15 +79,21 @@ export const useTrackerStore = create<TrackerStore>()(
             .order('created_at', { ascending: false })
 
           if (data && data.length > 0) {
+            const localSessions = get().sessions
             set({
-              sessions: data.map((r) => ({
-                id: r.id,
-                name: r.name,
-                month: r.month,
-                items: r.items as unknown as TrackerItem[],
-                createdAt: r.created_at,
-                updatedAt: r.updated_at,
-              })),
+              sessions: data.map((r) => {
+                const local = localSessions.find((s) => s.id === r.id)
+                return {
+                  id: r.id,
+                  name: r.name,
+                  month: r.month,
+                  startDate: local?.startDate,
+                  endDate: local?.endDate,
+                  items: r.items as unknown as TrackerItem[],
+                  createdAt: r.created_at,
+                  updatedAt: r.updated_at,
+                }
+              }),
             })
           } else {
             // Push existing local sessions to Supabase on first login
@@ -97,14 +107,37 @@ export const useTrackerStore = create<TrackerStore>()(
         }
       },
 
-      addSession: (name, month) => {
+      addSession: (name, month, startDate, endDate) => {
         const id = crypto.randomUUID()
         const now = new Date().toISOString()
-        const newSession: TrackerSession = { id, name, month, items: [], createdAt: now, updatedAt: now }
+        const newSession: TrackerSession = {
+          id,
+          name,
+          month,
+          startDate: startDate || undefined,
+          endDate: endDate || undefined,
+          items: [],
+          createdAt: now,
+          updatedAt: now,
+        }
         set((s) => ({ sessions: [...s.sessions, newSession] }))
         const { userId } = get()
         if (userId) syncSessionToSupabase(newSession, userId)
         return id
+      },
+
+      updateSession: (id, updates) => {
+        const now = new Date().toISOString()
+        set((s) => ({
+          sessions: s.sessions.map((sess) =>
+            sess.id === id ? { ...sess, ...updates, updatedAt: now } : sess
+          ),
+        }))
+        const { userId, sessions } = get()
+        if (userId) {
+          const updated = sessions.find((s) => s.id === id)
+          if (updated) syncSessionToSupabase(updated, userId)
+        }
       },
 
       deleteSession: (id) => {
