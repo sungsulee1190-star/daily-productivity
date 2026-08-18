@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { createClient } from '@/lib/supabase'
+import type { Json } from '@/lib/database.types'
 
 export type ClipType = 'work' | 'personal'
 export type Priority = 'high' | 'medium' | 'low'
@@ -46,12 +47,11 @@ interface TodoStore {
   completeTodo: (id: string) => void
   uncompleteTodo: (id: string) => void
   addSubtask: (todoId: string, title: string, startDate?: string, dueDate?: string) => void
-  updateSubtask: (todoId: string, subtaskId: string, updates: Partial<Subtask>) => void
+  updateSubtask: (todoId: string, subtaskId: string, updates: Partial<Subtask> | string) => void
   toggleSubtask: (todoId: string, subtaskId: string) => void
   deleteSubtask: (todoId: string, subtaskId: string) => void
 }
 
-// Sync a todo to Supabase (upsert). Extended fields not in schema are ignored.
 async function syncToSupabase(todo: Todo, userId: string) {
   try {
     const supabase = createClient()
@@ -62,6 +62,12 @@ async function syncToSupabase(todo: Todo, userId: string) {
       completed: todo.completed,
       priority: todo.priority,
       due_date: todo.deadline ?? null,
+      memo: todo.memo ?? null,
+      tags: todo.tags,
+      clip: todo.clip,
+      completed_at: todo.completedAt ?? null,
+      subtasks: todo.subtasks as unknown as Json,
+      kanban_status: todo.kanbanStatus,
       created_at: todo.createdAt,
       updated_at: new Date().toISOString(),
     })
@@ -77,6 +83,13 @@ async function deleteFromSupabase(id: string) {
   } catch {
     // non-blocking
   }
+}
+
+function syncTodoById(id: string, get: () => TodoStore) {
+  const { userId, todos } = get()
+  if (!userId) return
+  const updated = todos.find((t) => t.id === id)
+  if (updated) syncToSupabase(updated, userId)
 }
 
 export const useTodoStore = create<TodoStore>()(
@@ -102,8 +115,7 @@ export const useTodoStore = create<TodoStore>()(
             .order('created_at', { ascending: false })
 
           if (data && data.length > 0) {
-            // Merge: Supabase is source of truth for core fields;
-            // local store preserves extended fields (subtasks, tags, memo, etc.)
+            // Supabase is the source of truth; local values fill older rows.
             const localTodos = get().todos
             const merged = data.map((row) => {
               const local = localTodos.find((t) => t.id === row.id)
@@ -114,14 +126,13 @@ export const useTodoStore = create<TodoStore>()(
                 priority: row.priority as Priority,
                 deadline: row.due_date ?? undefined,
                 createdAt: row.created_at,
-                // Preserve extended local fields or fallback to defaults
                 startDate: local?.startDate,
-                memo: local?.memo,
-                tags: local?.tags ?? [],
-                clip: local?.clip ?? 'work',
-                completedAt: local?.completedAt,
-                subtasks: local?.subtasks ?? [],
-                kanbanStatus: local?.kanbanStatus ?? (row.completed ? 'done' : 'backlog'),
+                memo: row.memo ?? local?.memo,
+                tags: row.tags ?? local?.tags ?? [],
+                clip: row.clip ?? local?.clip ?? 'work',
+                completedAt: row.completed_at ?? local?.completedAt,
+                subtasks: (row.subtasks as Subtask[] | null) ?? local?.subtasks ?? [],
+                kanbanStatus: row.kanban_status ?? local?.kanbanStatus ?? (row.completed ? 'done' : 'backlog'),
               } as Todo
             })
             set({ todos: merged })
@@ -195,7 +206,7 @@ export const useTodoStore = create<TodoStore>()(
         }
       },
 
-      addSubtask: (todoId, title, startDate, dueDate) =>
+      addSubtask: (todoId, title, startDate, dueDate) => {
         set((state) => ({
           todos: state.todos.map((t) =>
             t.id === todoId
@@ -214,23 +225,28 @@ export const useTodoStore = create<TodoStore>()(
                 }
               : t
           ),
-        })),
+        }))
+        syncTodoById(todoId, get)
+      },
 
-      updateSubtask: (todoId, subtaskId, updates) =>
+      updateSubtask: (todoId, subtaskId, updates) => {
+        const updateObj = typeof updates === 'string' ? { title: updates } : updates
         set((state) => ({
           todos: state.todos.map((t) =>
             t.id === todoId
               ? {
                   ...t,
                   subtasks: (t.subtasks ?? []).map((s) =>
-                    s.id === subtaskId ? { ...s, ...updates } : s
+                    s.id === subtaskId ? { ...s, ...updateObj } : s
                   ),
                 }
               : t
           ),
-        })),
+        }))
+        syncTodoById(todoId, get)
+      },
 
-      toggleSubtask: (todoId, subtaskId) =>
+      toggleSubtask: (todoId, subtaskId) => {
         set((state) => ({
           todos: state.todos.map((t) => {
             if (t.id !== todoId) return t
@@ -249,16 +265,20 @@ export const useTodoStore = create<TodoStore>()(
               kanbanStatus: allDone ? 'done' : t.kanbanStatus,
             }
           }),
-        })),
+        }))
+        syncTodoById(todoId, get)
+      },
 
-      deleteSubtask: (todoId, subtaskId) =>
+      deleteSubtask: (todoId, subtaskId) => {
         set((state) => ({
           todos: state.todos.map((t) =>
             t.id === todoId
               ? { ...t, subtasks: (t.subtasks ?? []).filter((s) => s.id !== subtaskId) }
               : t
           ),
-        })),
+        }))
+        syncTodoById(todoId, get)
+      },
     }),
     {
       name: 'daily-productivity-todos',

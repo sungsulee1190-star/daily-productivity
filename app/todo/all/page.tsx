@@ -23,7 +23,12 @@ export default function AllTodosPage() {
   const clipTodos = todos.filter((t) => t.clip === activeClip)
 
   const filtered = clipTodos.filter((t) => {
-    if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false
+    const normalizedSearch = search.trim().replace(/^#/, '').toLowerCase()
+    if (
+      normalizedSearch &&
+      !t.title.toLowerCase().includes(normalizedSearch) &&
+      !t.tags.some((tag) => tag.toLowerCase().includes(normalizedSearch))
+    ) return false
     if (filter === 'daily') return !t.completed && !!t.deadline
     if (filter === 'someday') return !t.completed && !t.deadline
     if (filter === 'completed') return t.completed

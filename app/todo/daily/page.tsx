@@ -13,19 +13,26 @@ export default function DailyPage() {
   const { todos, activeClip } = useTodoStore()
   const [showForm, setShowForm] = useState(false)
   const [editTodo, setEditTodo] = useState<Todo | null>(null)
+  const [tagFilter, setTagFilter] = useState<string | null>(null)
 
   const todayStr = format(new Date(), 'yyyy-MM-dd')
 
   const clipTodos = todos.filter((t) => t.clip === activeClip)
+  const availableTags = Array.from(
+    new Set(clipTodos.flatMap((todo) => todo.tags ?? []))
+  ).sort((a, b) => a.localeCompare(b))
+  const visibleTodos = tagFilter
+    ? clipTodos.filter((todo) => todo.tags.some((tag) => tag === tagFilter))
+    : clipTodos
 
-  const overdueTodos = clipTodos.filter(
+  const overdueTodos = visibleTodos.filter(
     (t) => !t.completed && t.deadline && t.deadline < todayStr
   )
   // 마감일 없음도 오늘 할 일로 취급
-  const todayTodos = clipTodos.filter(
+  const todayTodos = visibleTodos.filter(
     (t) => !t.completed && (!t.deadline || t.deadline === todayStr)
   )
-  const completedToday = clipTodos.filter(
+  const completedToday = visibleTodos.filter(
     (t) =>
       t.completed &&
       t.completedAt &&
@@ -54,6 +61,36 @@ export default function DailyPage() {
       </div>
 
       {/* 기한 초과 */}
+      {availableTags.length > 0 && (
+        <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
+          <button
+            onClick={() => setTagFilter(null)}
+            className="text-xs px-3 py-1.5 rounded-full font-medium whitespace-nowrap"
+            style={
+              tagFilter === null
+                ? { backgroundColor: 'var(--accent)', color: 'white' }
+                : { backgroundColor: 'var(--surface)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }
+            }
+          >
+            전체
+          </button>
+          {availableTags.map((tag) => (
+            <button
+              key={tag}
+              onClick={() => setTagFilter(tagFilter === tag ? null : tag)}
+              className="text-xs px-3 py-1.5 rounded-full font-medium whitespace-nowrap"
+              style={
+                tagFilter === tag
+                  ? { backgroundColor: 'var(--accent)', color: 'white' }
+                  : { backgroundColor: 'var(--surface)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }
+              }
+            >
+              #{tag}
+            </button>
+          ))}
+        </div>
+      )}
+
       {overdueTodos.length > 0 && (
         <section className="mb-6">
           <h2 className="text-xs font-semibold uppercase tracking-wide mb-2"

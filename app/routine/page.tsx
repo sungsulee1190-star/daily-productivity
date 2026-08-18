@@ -1,10 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { format, startOfWeek, startOfMonth, endOfMonth, addDays } from 'date-fns'
 import { ko } from 'date-fns/locale'
-import { useRoutineStore, Routine } from '@/store/routineStore'
+import { useAuth } from '@/lib/auth-context'
+import { useRoutineStore, Routine, syncRoutineToSupabase } from '@/store/routineStore'
+
+export { syncRoutineToSupabase }
 
 function getMonthWeeks(year: number, month: number): Array<{ label: string; key: string; start: Date; end: Date }> {
   const firstDay = startOfMonth(new Date(year, month - 1))
@@ -34,7 +37,9 @@ function getMonthWeeks(year: number, month: number): Array<{ label: string; key:
 }
 
 export default function RoutinePage() {
-  const { routines, addRoutine, toggleRoutine, hideRoutine } = useRoutineStore()
+  const { user } = useAuth()
+  const userId = user?.id
+  const { routines, addRoutine, toggleRoutine, hideRoutine, fetchRoutines } = useRoutineStore()
   const [showForm, setShowForm] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [newType, setNewType] = useState<'weekly' | 'monthly' | 'daily'>('weekly')
@@ -50,6 +55,10 @@ export default function RoutinePage() {
   const dailyRoutines = routines.filter((r) => r.type === 'daily' && !r.hidden)
 
   const monthWeeks = getMonthWeeks(currentYear, currentMonth)
+
+  useEffect(() => {
+    if (userId) fetchRoutines(userId)
+  }, [userId, fetchRoutines])
 
   function isWeeklyChecked(r: Routine) {
     return r.checkedWeeks.includes(weekKey)
@@ -102,217 +111,245 @@ export default function RoutinePage() {
             placeholder="루틴 이름..."
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
-            className="flex-1 px-3 py-2 rounded-xl text-sm outline-none"
+            className="flex-1 text-sm px-3 py-2 rounded-xl outline-none"
             style={{ backgroundColor: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
           />
           <select
             value={newType}
             onChange={(e) => setNewType(e.target.value as 'weekly' | 'monthly' | 'daily')}
-            className="px-3 py-2 rounded-xl text-sm outline-none"
+            className="text-sm px-3 py-2 rounded-xl outline-none"
             style={{ backgroundColor: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
           >
-            <option value="daily">일간</option>
-            <option value="weekly">주간</option>
-            <option value="monthly">월간</option>
+            <option value="weekly">주간 루틴 (매주 체크)</option>
+            <option value="monthly">월간 루틴 (주차별 체크)</option>
+            <option value="daily">일간 루틴 (매일 체크)</option>
           </select>
-          <button type="submit" className="px-4 py-2 rounded-xl text-sm font-medium"
-            style={{ backgroundColor: 'var(--accent)', color: 'white' }}>추가</button>
-          <button type="button" onClick={() => setShowForm(false)} style={{ color: 'var(--text-muted)' }}>
-            <X size={16} />
+          <button
+            type="submit"
+            className="text-sm px-4 py-2 rounded-xl font-medium"
+            style={{ backgroundColor: 'var(--accent)', color: 'white' }}
+          >
+            추가
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowForm(false)}
+            className="text-sm px-3 py-2 rounded-xl font-medium"
+            style={{ backgroundColor: 'var(--surface-2)', color: 'var(--text-muted)' }}
+          >
+            취소
           </button>
         </form>
       )}
 
-      {/* 일간 루틴 */}
-      <section className="mb-8">
-        <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>
-          ☀️ 일간 루틴 — 오늘 ({format(now, 'M월 d일', { locale: ko })})
-        </h2>
-        {dailyRoutines.length === 0 ? (
-          <p className="text-sm text-center py-6" style={{ color: 'var(--text-muted)' }}>
-            일간 루틴을 추가해보세요
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {dailyRoutines.map((r) => (
-              <div key={r.id}
-                className="flex items-center gap-3 px-4 py-3 rounded-2xl"
-                style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
-                <button
-                  onClick={() => toggleRoutine(r.id)}
-                  className="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0"
-                  style={isDailyChecked(r)
-                    ? { backgroundColor: 'var(--accent)', borderColor: 'var(--accent)' }
-                    : { borderColor: '#D6D3D1' }}
-                >
-                  {isDailyChecked(r) && (
-                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                      <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </button>
-                <span className="flex-1 text-sm" style={{
-                  color: isDailyChecked(r) ? 'var(--text-muted)' : 'var(--text-primary)',
-                  textDecoration: isDailyChecked(r) ? 'line-through' : 'none',
-                }}>
-                  {r.title}
-                </span>
-                <button onClick={() => hideRoutine(r.id)} style={{ color: 'var(--text-muted)' }}>
-                  <X size={14} />
-                </button>
-              </div>
-            ))}
+      <div className="space-y-8">
+        {/* 일간 루틴 섹션 */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
+              <span>☀️</span> 일간 루틴
+              <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: 'var(--surface-2)', color: 'var(--text-muted)' }}>
+                {format(now, 'M월 d일 EEEE', { locale: ko })}
+              </span>
+            </h2>
+            <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+              {dailyRoutines.filter(isDailyChecked).length}/{dailyRoutines.length} 완료
+            </span>
           </div>
-        )}
-      </section>
 
-      {/* 주간 루틴 */}
-      <section className="mb-8">
-        <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>
-          📅 주간 루틴 — 이번 주
-        </h2>
-        {weeklyRoutines.length === 0 ? (
-          <p className="text-sm text-center py-6" style={{ color: 'var(--text-muted)' }}>
-            주간 루틴을 추가해보세요
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {weeklyRoutines.map((r) => (
-              <div key={r.id}
-                className="flex items-center gap-3 px-4 py-3 rounded-2xl"
-                style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
-                <button
-                  onClick={() => toggleRoutine(r.id)}
-                  className="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0"
-                  style={isWeeklyChecked(r)
-                    ? { backgroundColor: 'var(--accent)', borderColor: 'var(--accent)' }
-                    : { borderColor: '#D6D3D1' }}
-                >
-                  {isWeeklyChecked(r) && (
-                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                      <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </button>
-                <span className="flex-1 text-sm" style={{
-                  color: isWeeklyChecked(r) ? 'var(--text-muted)' : 'var(--text-primary)',
-                  textDecoration: isWeeklyChecked(r) ? 'line-through' : 'none',
-                }}>
-                  {r.title}
-                </span>
-                <button onClick={() => hideRoutine(r.id)} style={{ color: 'var(--text-muted)' }}>
-                  <X size={14} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* 월간 루틴 */}
-      <section>
-        <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>
-          🗓 월간 루틴 — 이번 달
-        </h2>
-        {monthlyRoutines.length === 0 ? (
-          <p className="text-sm text-center py-6" style={{ color: 'var(--text-muted)' }}>
-            월간 루틴을 추가해보세요
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
-              <thead>
-                <tr>
-                  <th
-                    className="text-left px-4 py-2 text-xs font-semibold rounded-tl-xl"
-                    style={{ color: 'var(--text-muted)', backgroundColor: 'var(--surface)', minWidth: '140px' }}
+          {dailyRoutines.length === 0 ? (
+            <div className="text-center py-6 rounded-2xl text-xs" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+              등록된 일간 루틴이 없습니다.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {dailyRoutines.map((routine) => {
+                const checked = isDailyChecked(routine)
+                return (
+                  <div
+                    key={routine.id}
+                    className="flex items-center justify-between p-3.5 rounded-2xl transition-all group"
+                    style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}
                   >
-                    루틴
-                  </th>
-                  {monthWeeks.map((week, idx) => (
-                    <th
-                      key={week.key}
-                      className="px-3 py-2 text-xs font-semibold text-center"
-                      style={{
-                        color: 'var(--text-muted)',
-                        backgroundColor: 'var(--surface)',
-                        borderLeft: '1px solid var(--border)',
-                        minWidth: '80px',
-                        borderRadius: idx === monthWeeks.length - 1 ? '0 0.75rem 0 0' : 0,
-                      }}
-                    >
-                      <div>{week.label}</div>
-                      <div style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{idx + 1}주차</div>
-                    </th>
-                  ))}
-                  <th
-                    className="px-2 py-2 text-xs rounded-tr-xl"
-                    style={{ backgroundColor: 'var(--surface)', borderLeft: '1px solid var(--border)', width: '40px' }}
-                  />
-                </tr>
-              </thead>
-              <tbody>
-                {monthlyRoutines.map((r, rowIdx) => (
-                  <tr key={r.id}>
-                    <td
-                      className="px-4 py-3 text-sm"
-                      style={{
-                        backgroundColor: 'var(--surface)',
-                        color: 'var(--text-primary)',
-                        borderTop: '1px solid var(--border)',
-                        borderRadius: rowIdx === monthlyRoutines.length - 1 ? '0 0 0 0.75rem' : 0,
-                      }}
-                    >
-                      {r.title}
-                    </td>
-                    {monthWeeks.map((week) => {
-                      const checked = isMonthlyWeekChecked(r, week.key)
-                      return (
-                        <td
-                          key={week.key}
-                          className="px-3 py-3 text-center"
-                          style={{
-                            backgroundColor: 'var(--surface)',
-                            borderTop: '1px solid var(--border)',
-                            borderLeft: '1px solid var(--border)',
-                          }}
-                        >
-                          <button
-                            onClick={() => toggleRoutine(r.id, week.key)}
-                            className="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all mx-auto"
-                            style={checked
-                              ? { backgroundColor: 'var(--accent)', borderColor: 'var(--accent)' }
-                              : { borderColor: '#D6D3D1' }}
-                          >
-                            {checked && (
-                              <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                                <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            )}
-                          </button>
-                        </td>
-                      )
-                    })}
-                    <td
-                      className="px-2 py-3 text-center"
-                      style={{
-                        backgroundColor: 'var(--surface)',
-                        borderTop: '1px solid var(--border)',
-                        borderLeft: '1px solid var(--border)',
-                        borderRadius: rowIdx === monthlyRoutines.length - 1 ? '0 0 0.75rem 0' : 0,
-                      }}
-                    >
-                      <button onClick={() => hideRoutine(r.id)} style={{ color: 'var(--text-muted)' }}>
-                        <X size={14} />
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => toggleRoutine(routine.id)}
+                        className="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all"
+                        style={
+                          checked
+                            ? { backgroundColor: 'var(--accent)', borderColor: 'var(--accent)' }
+                            : { borderColor: '#D6D3D1', backgroundColor: 'transparent' }
+                        }
+                      >
+                        {checked && (
+                          <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                            <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
                       </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <span
+                        className="text-sm font-medium"
+                        style={{
+                          color: checked ? 'var(--text-muted)' : 'var(--text-primary)',
+                          textDecoration: checked ? 'line-through' : 'none',
+                        }}
+                      >
+                        {routine.title}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => hideRoutine(routine.id)}
+                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-opacity"
+                      style={{ color: 'var(--text-muted)' }}
+                      title="숨기기"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* 주간 루틴 섹션 */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
+              <span>📅</span> 이번 주 루틴
+            </h2>
+            <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+              {weeklyRoutines.filter(isWeeklyChecked).length}/{weeklyRoutines.length} 완료
+            </span>
           </div>
-        )}
-      </section>
+
+          {weeklyRoutines.length === 0 ? (
+            <div className="text-center py-6 rounded-2xl text-xs" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+              등록된 주간 루틴이 없습니다.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {weeklyRoutines.map((routine) => {
+                const checked = isWeeklyChecked(routine)
+                return (
+                  <div
+                    key={routine.id}
+                    className="flex items-center justify-between p-3.5 rounded-2xl transition-all group"
+                    style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => toggleRoutine(routine.id)}
+                        className="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all"
+                        style={
+                          checked
+                            ? { backgroundColor: 'var(--accent)', borderColor: 'var(--accent)' }
+                            : { borderColor: '#D6D3D1', backgroundColor: 'transparent' }
+                        }
+                      >
+                        {checked && (
+                          <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                            <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                      </button>
+                      <span
+                        className="text-sm font-medium"
+                        style={{
+                          color: checked ? 'var(--text-muted)' : 'var(--text-primary)',
+                          textDecoration: checked ? 'line-through' : 'none',
+                        }}
+                      >
+                        {routine.title}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => hideRoutine(routine.id)}
+                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-opacity"
+                      style={{ color: 'var(--text-muted)' }}
+                      title="숨기기"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* 월간 루틴 섹션 */}
+        <div>
+          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
+            <span>🗓</span> 이번 달 주차별 루틴
+          </h2>
+
+          {monthlyRoutines.length === 0 ? (
+            <div className="text-center py-6 rounded-2xl text-xs" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+              등록된 월간 루틴이 없습니다.
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl" style={{ border: '1px solid var(--border)' }}>
+              <table className="w-full text-xs text-left" style={{ backgroundColor: 'var(--surface)' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--surface-2)' }}>
+                    <th className="py-3 px-4 font-semibold" style={{ color: 'var(--text-primary)' }}>루틴명</th>
+                    {monthWeeks.map((w) => (
+                      <th key={w.key} className="py-3 px-2 text-center font-medium" style={{ color: 'var(--text-muted)' }}>
+                        {w.label}
+                      </th>
+                    ))}
+                    <th className="py-3 px-3 text-right"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {monthlyRoutines.map((routine) => (
+                    <tr key={routine.id} className="group hover:bg-black/5 dark:hover:bg-white/5 transition-colors" style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td className="py-3 px-4 font-medium" style={{ color: 'var(--text-primary)' }}>
+                        {routine.title}
+                      </td>
+                      {monthWeeks.map((w) => {
+                        const checked = isMonthlyWeekChecked(routine, w.key)
+                        return (
+                          <td key={w.key} className="py-3 px-2 text-center">
+                            <button
+                              onClick={() => toggleRoutine(routine.id, w.key)}
+                              className="w-4 h-4 mx-auto rounded border flex items-center justify-center transition-all"
+                              style={
+                                checked
+                                  ? { backgroundColor: 'var(--accent)', borderColor: 'var(--accent)' }
+                                  : { borderColor: '#D6D3D1', backgroundColor: 'transparent' }
+                              }
+                            >
+                              {checked && (
+                                <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
+                                  <path d="M1 3L3 5L7 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              )}
+                            </button>
+                          </td>
+                        )
+                      })}
+                      <td className="py-3 px-3 text-right">
+                        <button
+                          onClick={() => hideRoutine(routine.id)}
+                          className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-black/5 dark:hover:bg-white/5 transition-opacity"
+                          style={{ color: 'var(--text-muted)' }}
+                          title="숨기기"
+                        >
+                          <X size={13} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

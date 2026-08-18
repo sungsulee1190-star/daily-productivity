@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Trash2, Pencil, ChevronDown, ChevronUp, Plus, X, Calendar, Check } from 'lucide-react'
+import { Trash2, Pencil, ChevronDown, ChevronUp, Plus, X, Calendar } from 'lucide-react'
 import { Todo, Subtask, useTodoStore } from '@/store/todoStore'
 import { getDaysOverdue, formatDate } from '@/lib/utils'
 
@@ -380,7 +380,7 @@ export default function TodoItem({ todo, onEdit }: Props) {
                     <span
                       className="flex-1 text-xs"
                       style={{
-                        color: sub.completed ? 'var(--text-muted)' : 'var(--text-secondary)',
+                        color: sub.completed ? 'var(--text-muted)' : 'var(--text-primary)',
                         textDecoration: sub.completed ? 'line-through' : 'none',
                       }}
                     >
