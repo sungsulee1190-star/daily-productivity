@@ -12,8 +12,9 @@ test('AuthGate boots the routine store on login (P1)', () => {
 
 test('deleteRoutine removes the row from Supabase (P2)', () => {
   const src = read('store/routineStore.ts')
-  const idx = src.indexOf('deleteRoutine:')
-  assert.ok(idx > -1, 'deleteRoutine exists')
-  assert.match(src.slice(idx, idx + 400), /deleteRoutineFromSupabase\(/, 'deleteRoutine calls the Supabase delete helper')
-  assert.match(src, /from\('routines'\)\s*\.delete\(\)/, 'a routines delete query exists')
+  assert.match(src, /async function deleteRoutineFromSupabase\s*\(/, 'delete helper defined')
+  assert.match(src, /from\('routines'\)\s*\.delete\(\)\s*\.eq\(\s*'id',\s*id\s*\)/, 'routines delete query exists')
+  const idx = src.indexOf('deleteRoutine: (id) =>')
+  assert.ok(idx > -1, 'deleteRoutine action exists')
+  assert.match(src.slice(idx, idx + 300), /deleteRoutineFromSupabase\(id\)/, 'deleteRoutine action calls the helper')
 })
