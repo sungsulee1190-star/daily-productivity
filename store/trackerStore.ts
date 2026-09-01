@@ -305,6 +305,6 @@ export const useTrackerStore = create<TrackerStore>()(
         }
       },
     }),
-    { name: 'daily-tracker' }
+    { name: 'daily-tracker', partialize: (s) => ({ sessions: s.sessions }) }
   )
 )

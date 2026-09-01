@@ -153,6 +153,7 @@ export const useLinkStore = create<LinkStore>()(
     }),
     {
       name: 'daily-links',
+      partialize: (s) => ({ links: s.links }),
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.links = state.links.filter((l) => l.id !== 'default-sheets')

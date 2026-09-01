@@ -348,6 +348,7 @@ export const useTodoStore = create<TodoStore>()(
     }),
     {
       name: 'daily-productivity-todos',
+      partialize: (s) => ({ todos: s.todos, activeClip: s.activeClip }),
     }
   )
 )

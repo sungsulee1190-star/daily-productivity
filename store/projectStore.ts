@@ -228,6 +228,7 @@ export const useProjectStore = create<ProjectStore>()(
     }),
     {
       name: 'daily-productivity-projects',
+      partialize: (s) => ({ projects: s.projects }),
       // migrate existing projects without workflowStatus
       onRehydrateStorage: () => (state) => {
         if (state) {

@@ -230,6 +230,7 @@ export const useRoutineStore = create<RoutineStore>()(
     }),
     {
       name: 'daily-productivity-routines',
+      partialize: (s) => ({ routines: s.routines }),
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.routines = state.routines.map((r) => ({
