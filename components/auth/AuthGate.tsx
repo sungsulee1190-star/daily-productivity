@@ -9,6 +9,7 @@ import { useNoteStore } from '@/store/noteStore'
 import { useIdeaStore } from '@/store/ideaStore'
 import { useLinkStore } from '@/store/linkStore'
 import { useTrackerStore } from '@/store/trackerStore'
+import { useRoutineStore } from '@/store/routineStore'
 import LoginPage from './LoginPage'
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
@@ -20,6 +21,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const { fetchIdeas } = useIdeaStore()
   const { fetchLinks } = useLinkStore()
   const { fetchSessions } = useTrackerStore()
+  const { fetchRoutines } = useRoutineStore()
 
   useEffect(() => {
     if (user) {
@@ -30,6 +32,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       fetchIdeas(user.id)
       fetchLinks(user.id)
       fetchSessions(user.id)
+      fetchRoutines(user.id)
     }
   }, [user?.id])
 
