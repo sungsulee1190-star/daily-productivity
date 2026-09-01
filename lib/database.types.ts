@@ -287,6 +287,8 @@ export interface Database {
           user_id: string
           name: string
           month: string
+          start_date: string | null
+          end_date: string | null
           items: Json
           created_at: string
           updated_at: string
@@ -296,6 +298,8 @@ export interface Database {
           user_id: string
           name: string
           month: string
+          start_date?: string | null
+          end_date?: string | null
           items?: Json
           created_at?: string
           updated_at?: string
@@ -305,6 +309,8 @@ export interface Database {
           user_id?: string
           name?: string
           month?: string
+          start_date?: string | null
+          end_date?: string | null
           items?: Json
           created_at?: string
           updated_at?: string

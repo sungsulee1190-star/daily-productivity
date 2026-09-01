@@ -44,3 +44,11 @@ test('stores do not persist userId to localStorage (P5)', () => {
     assert.doesNotMatch(read(p), /partialize:\s*\([^)]*\)\s*=>\s*\(\{[^}]*userId/, `${p} partialize omits userId`)
   }
 })
+
+test('tracker session sync carries start/end date (P6)', () => {
+  const src = read('store/trackerStore.ts')
+  assert.match(src, /start_date:\s*session\.startDate/, 'upsert sends start_date')
+  assert.match(src, /end_date:\s*session\.endDate/, 'upsert sends end_date')
+  assert.match(src, /startDate:\s*r\.start_date/, 'fetch maps start_date back')
+  assert.match(src, /endDate:\s*r\.end_date/, 'fetch maps end_date back')
+})
