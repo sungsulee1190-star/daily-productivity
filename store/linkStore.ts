@@ -21,17 +21,39 @@ interface LinkStore {
 }
 
 async function syncLinkToSupabase(link: QuickLink, userId: string) {
+  if (!userId) {
+    console.warn('[LinkSync] Cannot sync: userId is null', { linkId: link.id })
+    return
+  }
   try {
     const supabase = createClient()
-    await supabase.from('links').upsert({
+    console.debug('[LinkSync] Upserting link', { id: link.id, userId, title: link.title })
+    const { error } = await supabase.from('links').upsert({
       id: link.id,
       user_id: userId,
       title: link.title,
       url: link.url,
       emoji: link.emoji,
     })
-  } catch {
-    // non-blocking
+    if (error) {
+      console.error('[LinkSync] Upsert failed', {
+        linkId: link.id,
+        userId,
+        error: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      })
+      return
+    }
+    console.debug('[LinkSync] Upsert successful', { id: link.id })
+  } catch (error) {
+    console.error('[LinkSync] Upsert failed', {
+      linkId: link.id,
+      userId,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    })
   }
 }
 
@@ -45,11 +67,20 @@ export const useLinkStore = create<LinkStore>()(
         set({ userId })
         try {
           const supabase = createClient()
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from('links')
             .select('*')
             .eq('user_id', userId)
             .order('created_at', { ascending: true })
+
+          if (error) {
+            console.error('[LinkSync] fetchLinks failed', {
+              userId,
+              error: error.message,
+              details: error.details,
+              code: error.code,
+            })
+          }
 
           if (data && data.length > 0) {
             set({
@@ -67,8 +98,11 @@ export const useLinkStore = create<LinkStore>()(
               syncLinkToSupabase(link, userId)
             }
           }
-        } catch {
-          // non-blocking
+        } catch (error) {
+          console.error('[LinkSync] fetchLinks failed', {
+            userId,
+            error: error instanceof Error ? error.message : String(error),
+          })
         }
       },
 
@@ -92,12 +126,29 @@ export const useLinkStore = create<LinkStore>()(
 
       deleteLink: (id) => {
         set((s) => ({ links: s.links.filter((l) => l.id !== id) }))
-        try {
-          const supabase = createClient()
-          supabase.from('links').delete().eq('id', id)
-        } catch {
-          // non-blocking
-        }
+        void (async () => {
+          try {
+            const supabase = createClient()
+            console.debug('[LinkSync] Deleting link', { id })
+            const { error } = await supabase.from('links').delete().eq('id', id)
+            if (error) {
+              console.error('[LinkSync] Delete failed', {
+                linkId: id,
+                error: error.message,
+                details: error.details,
+                hint: error.hint,
+                code: error.code,
+              })
+              return
+            }
+            console.debug('[LinkSync] Delete successful', { id })
+          } catch (error) {
+            console.error('[LinkSync] Delete failed', {
+              linkId: id,
+              error: error instanceof Error ? error.message : String(error),
+            })
+          }
+        })()
       },
     }),
     {

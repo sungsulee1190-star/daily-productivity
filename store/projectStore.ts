@@ -57,9 +57,14 @@ function toSupabaseStatus(status: ProjectStatus): 'active' | 'paused' | 'done' {
 }
 
 async function syncProjectToSupabase(project: Project, userId: string) {
+  if (!userId) {
+    console.warn('[ProjectSync] Cannot sync: userId is null', { projectId: project.id })
+    return
+  }
   try {
     const supabase = createClient()
-    await supabase.from('projects').upsert({
+    console.debug('[ProjectSync] Upserting project', { id: project.id, userId, name: project.title })
+    const { error } = await supabase.from('projects').upsert({
       id: project.id,
       user_id: userId,
       name: project.title,
@@ -70,17 +75,49 @@ async function syncProjectToSupabase(project: Project, userId: string) {
       created_at: project.createdAt,
       updated_at: project.updatedAt,
     })
-  } catch {
-    // non-blocking
+    if (error) {
+      console.error('[ProjectSync] Upsert failed', {
+        projectId: project.id,
+        userId,
+        error: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      })
+      return
+    }
+    console.debug('[ProjectSync] Upsert successful', { id: project.id })
+  } catch (error) {
+    console.error('[ProjectSync] Upsert failed', {
+      projectId: project.id,
+      userId,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    })
   }
 }
 
 async function deleteProjectFromSupabase(id: string) {
   try {
     const supabase = createClient()
-    await supabase.from('projects').delete().eq('id', id)
-  } catch {
-    // non-blocking
+    console.debug('[ProjectSync] Deleting project', { id })
+    const { error } = await supabase.from('projects').delete().eq('id', id)
+    if (error) {
+      console.error('[ProjectSync] Delete failed', {
+        projectId: id,
+        error: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      })
+      return
+    }
+    console.debug('[ProjectSync] Delete successful', { id })
+  } catch (error) {
+    console.error('[ProjectSync] Delete failed', {
+      projectId: id,
+      error: error instanceof Error ? error.message : String(error),
+    })
   }
 }
 
@@ -97,11 +134,20 @@ export const useProjectStore = create<ProjectStore>()(
         set({ loading: true, userId })
         try {
           const supabase = createClient()
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from('projects')
             .select('*')
             .eq('user_id', userId)
             .order('created_at', { ascending: false })
+
+          if (error) {
+            console.error('[ProjectSync] fetchProjects failed', {
+              userId,
+              error: error.message,
+              details: error.details,
+              code: error.code,
+            })
+          }
 
           if (data && data.length > 0) {
             const localProjects = get().projects
@@ -123,8 +169,11 @@ export const useProjectStore = create<ProjectStore>()(
             })
             set({ projects: merged })
           }
-        } catch {
-          // non-blocking
+        } catch (error) {
+          console.error('[ProjectSync] fetchProjects failed', {
+            userId,
+            error: error instanceof Error ? error.message : String(error),
+          })
         } finally {
           set({ loading: false })
         }

@@ -46,9 +46,14 @@ interface TrackerStore {
 }
 
 async function syncSessionToSupabase(session: TrackerSession, userId: string) {
+  if (!userId) {
+    console.warn('[TrackerSync] Cannot sync: userId is null', { sessionId: session.id })
+    return
+  }
   try {
     const supabase = createClient()
-    await supabase.from('tracker_sessions').upsert({
+    console.debug('[TrackerSync] Upserting session', { id: session.id, userId, name: session.name })
+    const { error } = await supabase.from('tracker_sessions').upsert({
       id: session.id,
       user_id: userId,
       name: session.name,
@@ -57,8 +62,25 @@ async function syncSessionToSupabase(session: TrackerSession, userId: string) {
       created_at: session.createdAt,
       updated_at: session.updatedAt,
     })
-  } catch {
-    // non-blocking
+    if (error) {
+      console.error('[TrackerSync] Upsert failed', {
+        sessionId: session.id,
+        userId,
+        error: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      })
+      return
+    }
+    console.debug('[TrackerSync] Upsert successful', { id: session.id })
+  } catch (error) {
+    console.error('[TrackerSync] Upsert failed', {
+      sessionId: session.id,
+      userId,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    })
   }
 }
 
@@ -72,11 +94,20 @@ export const useTrackerStore = create<TrackerStore>()(
         set({ userId })
         try {
           const supabase = createClient()
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from('tracker_sessions')
             .select('*')
             .eq('user_id', userId)
             .order('created_at', { ascending: false })
+
+          if (error) {
+            console.error('[TrackerSync] fetchSessions failed', {
+              userId,
+              error: error.message,
+              details: error.details,
+              code: error.code,
+            })
+          }
 
           if (data && data.length > 0) {
             const localSessions = get().sessions
@@ -102,8 +133,11 @@ export const useTrackerStore = create<TrackerStore>()(
               syncSessionToSupabase(session, userId)
             }
           }
-        } catch {
-          // non-blocking
+        } catch (error) {
+          console.error('[TrackerSync] fetchSessions failed', {
+            userId,
+            error: error instanceof Error ? error.message : String(error),
+          })
         }
       },
 
@@ -122,7 +156,12 @@ export const useTrackerStore = create<TrackerStore>()(
         }
         set((s) => ({ sessions: [...s.sessions, newSession] }))
         const { userId } = get()
-        if (userId) syncSessionToSupabase(newSession, userId)
+        console.debug('[TrackerSync] Session created locally', { id, userId })
+        if (userId) {
+          syncSessionToSupabase(newSession, userId)
+        } else {
+          console.warn('[TrackerSync] Cannot sync new session: userId not set', { id })
+        }
         return id
       },
 
@@ -142,12 +181,29 @@ export const useTrackerStore = create<TrackerStore>()(
 
       deleteSession: (id) => {
         set((s) => ({ sessions: s.sessions.filter((sess) => sess.id !== id) }))
-        try {
-          const supabase = createClient()
-          supabase.from('tracker_sessions').delete().eq('id', id)
-        } catch {
-          // non-blocking
-        }
+        void (async () => {
+          try {
+            const supabase = createClient()
+            console.debug('[TrackerSync] Deleting session', { id })
+            const { error } = await supabase.from('tracker_sessions').delete().eq('id', id)
+            if (error) {
+              console.error('[TrackerSync] Delete failed', {
+                sessionId: id,
+                error: error.message,
+                details: error.details,
+                hint: error.hint,
+                code: error.code,
+              })
+              return
+            }
+            console.debug('[TrackerSync] Delete successful', { id })
+          } catch (error) {
+            console.error('[TrackerSync] Delete failed', {
+              sessionId: id,
+              error: error instanceof Error ? error.message : String(error),
+            })
+          }
+        })()
       },
 
       addItem: (sessionId, item) => {

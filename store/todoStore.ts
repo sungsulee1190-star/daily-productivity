@@ -53,9 +53,14 @@ interface TodoStore {
 }
 
 async function syncToSupabase(todo: Todo, userId: string) {
+  if (!userId) {
+    console.warn('[TodoSync] Cannot sync: userId is null', { todoId: todo.id })
+    return
+  }
   try {
     const supabase = createClient()
-    await supabase.from('todos').upsert({
+    console.debug('[TodoSync] Upserting todo', { id: todo.id, userId, title: todo.title })
+    const { error } = await supabase.from('todos').upsert({
       id: todo.id,
       user_id: userId,
       title: todo.title,
@@ -71,25 +76,63 @@ async function syncToSupabase(todo: Todo, userId: string) {
       created_at: todo.createdAt,
       updated_at: new Date().toISOString(),
     })
-  } catch {
-    // Supabase sync failure is non-blocking; data is persisted locally
+    if (error) {
+      console.error('[TodoSync] Upsert failed', {
+        todoId: todo.id,
+        userId,
+        error: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      })
+      return
+    }
+    console.debug('[TodoSync] Upsert successful', { id: todo.id })
+  } catch (error) {
+    console.error('[TodoSync] Upsert failed', {
+      todoId: todo.id,
+      userId,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    })
   }
 }
 
 async function deleteFromSupabase(id: string) {
   try {
     const supabase = createClient()
-    await supabase.from('todos').delete().eq('id', id)
-  } catch {
-    // non-blocking
+    console.debug('[TodoSync] Deleting todo', { id })
+    const { error } = await supabase.from('todos').delete().eq('id', id)
+    if (error) {
+      console.error('[TodoSync] Delete failed', {
+        todoId: id,
+        error: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      })
+      return
+    }
+    console.debug('[TodoSync] Delete successful', { id })
+  } catch (error) {
+    console.error('[TodoSync] Delete failed', {
+      todoId: id,
+      error: error instanceof Error ? error.message : String(error),
+    })
   }
 }
 
 function syncTodoById(id: string, get: () => TodoStore) {
   const { userId, todos } = get()
-  if (!userId) return
+  if (!userId) {
+    console.warn('[TodoSync] Cannot sync: userId is null', { todoId: id })
+    return
+  }
   const updated = todos.find((t) => t.id === id)
-  if (updated) syncToSupabase(updated, userId)
+  if (updated) {
+    console.debug('[TodoSync] Queuing sync for todo', { id })
+    syncToSupabase(updated, userId)
+  }
 }
 
 export const useTodoStore = create<TodoStore>()(
@@ -108,11 +151,20 @@ export const useTodoStore = create<TodoStore>()(
         set({ loading: true, userId })
         try {
           const supabase = createClient()
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from('todos')
             .select('*')
             .eq('user_id', userId)
             .order('created_at', { ascending: false })
+
+          if (error) {
+            console.error('[TodoSync] fetchTodos failed', {
+              userId,
+              error: error.message,
+              details: error.details,
+              code: error.code,
+            })
+          }
 
           if (data && data.length > 0) {
             // Supabase is the source of truth; local values fill older rows.
@@ -137,8 +189,11 @@ export const useTodoStore = create<TodoStore>()(
             })
             set({ todos: merged })
           }
-        } catch {
-          // fetchTodos failure is non-blocking; local data remains
+        } catch (error) {
+          console.error('[TodoSync] fetchTodos failed', {
+            userId,
+            error: error instanceof Error ? error.message : String(error),
+          })
         } finally {
           set({ loading: false })
         }
@@ -155,7 +210,12 @@ export const useTodoStore = create<TodoStore>()(
         }
         set((state) => ({ todos: [newTodo, ...state.todos] }))
         const { userId } = get()
-        if (userId) syncToSupabase(newTodo, userId)
+        console.debug('[TodoSync] Todo created locally', { id: newTodo.id, userId })
+        if (userId) {
+          syncToSupabase(newTodo, userId)
+        } else {
+          console.warn('[TodoSync] Cannot sync new todo: userId not set', { id: newTodo.id })
+        }
       },
 
       updateTodo: (id, updates) => {

@@ -27,9 +27,14 @@ export interface RoutineStore {
 }
 
 export async function syncRoutineToSupabase(routine: Routine, userId: string) {
+  if (!userId) {
+    console.warn('[RoutineSync] Cannot sync: userId is null', { routineId: routine.id })
+    return
+  }
   try {
     const supabase = createClient()
-    await supabase.from('routines').upsert({
+    console.debug('[RoutineSync] Upserting routine', { id: routine.id, userId, title: routine.title })
+    const { error } = await supabase.from('routines').upsert({
       id: routine.id,
       user_id: userId,
       title: routine.title,
@@ -40,16 +45,39 @@ export async function syncRoutineToSupabase(routine: Routine, userId: string) {
       hidden: routine.hidden,
       updated_at: new Date().toISOString(),
     })
-  } catch {
-    // Local fallback remains available through persisted Zustand state.
+    if (error) {
+      console.error('[RoutineSync] Upsert failed', {
+        routineId: routine.id,
+        userId,
+        error: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      })
+      return
+    }
+    console.debug('[RoutineSync] Upsert successful', { id: routine.id })
+  } catch (error) {
+    console.error('[RoutineSync] Upsert failed', {
+      routineId: routine.id,
+      userId,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    })
   }
 }
 
 function syncRoutineById(id: string, get: () => RoutineStore) {
   const { userId, routines } = get()
-  if (!userId) return
+  if (!userId) {
+    console.warn('[RoutineSync] Cannot sync: userId is null', { routineId: id })
+    return
+  }
   const routine = routines.find((r) => r.id === id)
-  if (routine) syncRoutineToSupabase(routine, userId)
+  if (routine) {
+    console.debug('[RoutineSync] Queuing sync for routine', { id })
+    syncRoutineToSupabase(routine, userId)
+  }
 }
 
 export const useRoutineStore = create<RoutineStore>()(
@@ -62,11 +90,20 @@ export const useRoutineStore = create<RoutineStore>()(
         set({ userId })
         try {
           const supabase = createClient()
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from('routines')
             .select('*')
             .eq('user_id', userId)
             .order('created_at', { ascending: true })
+
+          if (error) {
+            console.error('[RoutineSync] fetchRoutines failed', {
+              userId,
+              error: error.message,
+              details: error.details,
+              code: error.code,
+            })
+          }
 
           if (data) {
             set({
@@ -81,8 +118,11 @@ export const useRoutineStore = create<RoutineStore>()(
               })),
             })
           }
-        } catch {
-          // keep local fallback
+        } catch (error) {
+          console.error('[RoutineSync] fetchRoutines failed', {
+            userId,
+            error: error instanceof Error ? error.message : String(error),
+          })
         }
       },
       addRoutine: (title, type) => {
@@ -97,7 +137,12 @@ export const useRoutineStore = create<RoutineStore>()(
         }
         set((s) => ({ routines: [...s.routines, newRoutine] }))
         const { userId } = get()
-        if (userId) syncRoutineToSupabase(newRoutine, userId)
+        console.debug('[RoutineSync] Routine created locally', { id: newRoutine.id, userId })
+        if (userId) {
+          syncRoutineToSupabase(newRoutine, userId)
+        } else {
+          console.warn('[RoutineSync] Cannot sync new routine: userId not set', { id: newRoutine.id })
+        }
       },
       toggleRoutine: (id, key) => {
         const now = new Date()
