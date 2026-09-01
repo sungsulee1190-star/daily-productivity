@@ -67,6 +67,30 @@ export async function syncRoutineToSupabase(routine: Routine, userId: string) {
   }
 }
 
+async function deleteRoutineFromSupabase(id: string) {
+  try {
+    const supabase = createClient()
+    console.debug('[RoutineSync] Deleting routine', { id })
+    const { error } = await supabase.from('routines').delete().eq('id', id)
+    if (error) {
+      console.error('[RoutineSync] Delete failed', {
+        routineId: id,
+        error: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      })
+      return
+    }
+    console.debug('[RoutineSync] Delete successful', { id })
+  } catch (error) {
+    console.error('[RoutineSync] Delete failed', {
+      routineId: id,
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
+}
+
 function syncRoutineById(id: string, get: () => RoutineStore) {
   const { userId, routines } = get()
   if (!userId) {
@@ -195,6 +219,7 @@ export const useRoutineStore = create<RoutineStore>()(
         set((s) => ({
           routines: s.routines.filter((r) => r.id !== id),
         }))
+        deleteRoutineFromSupabase(id)
       },
     }),
     {
