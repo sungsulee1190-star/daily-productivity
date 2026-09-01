@@ -128,7 +128,7 @@ export const useTrackerStore = create<TrackerStore>()(
                 }
               }),
             })
-          } else {
+          } else if (data && data.length === 0) {
             // Push existing local sessions to Supabase on first login
             const local = get().sessions
             for (const session of local) {

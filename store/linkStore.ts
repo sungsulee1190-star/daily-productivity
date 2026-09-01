@@ -91,7 +91,7 @@ export const useLinkStore = create<LinkStore>()(
                 emoji: r.emoji,
               })),
             })
-          } else {
+          } else if (data && data.length === 0) {
             // Push existing local links to Supabase on first login
             const local = get().links
             for (const link of local) {
