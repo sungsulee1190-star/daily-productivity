@@ -26,7 +26,7 @@ test('utils exposes a local-date completion check (P4)', () => {
 })
 
 test('home + progress cards no longer bucket completedAt with startsWith (P4)', () => {
-  for (const p of ['app/page.tsx', 'components/ProgressCards.tsx']) {
+  for (const p of ['app/page.tsx', 'components/ProgressCards.tsx', 'app/todo/daily/page.tsx']) {
     const src = read(p)
     assert.doesNotMatch(src, /completedAt[^\n]{0,40}\.startsWith\(/, `${p} does not use completedAt.startsWith`)
     assert.match(src, /isCompletedOn\(/, `${p} uses isCompletedOn`)

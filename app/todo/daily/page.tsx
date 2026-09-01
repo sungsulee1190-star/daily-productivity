@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { useTodoStore } from '@/store/todoStore'
+import { isCompletedOn } from '@/lib/utils'
 import TodoItem from '@/components/TodoItem'
 import TodoForm from '@/components/TodoForm'
 import type { Todo } from '@/store/todoStore'
@@ -33,10 +34,7 @@ export default function DailyPage() {
     (t) => !t.completed && (!t.deadline || t.deadline === todayStr)
   )
   const completedToday = visibleTodos.filter(
-    (t) =>
-      t.completed &&
-      t.completedAt &&
-      t.completedAt.startsWith(todayStr)
+    (t) => t.completed && isCompletedOn(t.completedAt, todayStr)
   )
 
   return (
