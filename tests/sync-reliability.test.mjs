@@ -18,3 +18,17 @@ test('deleteRoutine removes the row from Supabase (P2)', () => {
   assert.ok(idx > -1, 'deleteRoutine action exists')
   assert.match(src.slice(idx, idx + 300), /deleteRoutineFromSupabase\(id\)/, 'deleteRoutine action calls the helper')
 })
+
+test('utils exposes a local-date completion check (P4)', () => {
+  const src = read('lib/utils.ts')
+  assert.match(src, /export function isCompletedOn\s*\(/, 'isCompletedOn helper exists')
+  assert.match(src, /export function toLocalDateKey\s*\(/, 'toLocalDateKey helper exists')
+})
+
+test('home + progress cards no longer bucket completedAt with startsWith (P4)', () => {
+  for (const p of ['app/page.tsx', 'components/ProgressCards.tsx']) {
+    const src = read(p)
+    assert.doesNotMatch(src, /completedAt[^\n]{0,40}\.startsWith\(/, `${p} does not use completedAt.startsWith`)
+    assert.match(src, /isCompletedOn\(/, `${p} uses isCompletedOn`)
+  }
+})

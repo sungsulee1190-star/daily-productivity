@@ -2,7 +2,7 @@
 
 import { useTodoStore, type Todo } from '@/store/todoStore'
 import { format } from 'date-fns'
-import { isThisWeek, isThisMonth } from '@/lib/utils'
+import { isThisWeek, isThisMonth, isCompletedOn } from '@/lib/utils'
 
 interface StatCardProps {
   label: string
@@ -60,8 +60,7 @@ export default function ProgressCards() {
   const dailyDone = clipTodos.filter(
     (t) =>
       t.completed &&
-      t.completedAt &&
-      t.completedAt.startsWith(todayStr)
+      isCompletedOn(t.completedAt, todayStr)
   ).length
 
   // Weekly: 이번 주 생성됐거나 이번 주 완료된 항목

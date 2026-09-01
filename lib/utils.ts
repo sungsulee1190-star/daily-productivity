@@ -1,4 +1,4 @@
-import { differenceInDays, startOfDay, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns'
+import { differenceInDays, startOfDay, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, format } from 'date-fns'
 
 export function getDaysOverdue(deadline: string): number {
   const today = startOfDay(new Date())
@@ -43,4 +43,13 @@ export function isThisMonth(dateStr: string): boolean {
 
 export function cn(...classes: (string | undefined | false | null)[]): string {
   return classes.filter(Boolean).join(' ')
+}
+
+export function toLocalDateKey(iso: string): string {
+  return format(parseISO(iso), 'yyyy-MM-dd')
+}
+
+export function isCompletedOn(completedAt: string | undefined, dateKey: string): boolean {
+  if (!completedAt) return false
+  return toLocalDateKey(completedAt) === dateKey
 }

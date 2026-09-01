@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Plus, Calendar, ChevronDown, ChevronUp } from 'lucide-react'
 import { useTodoStore } from '@/store/todoStore'
+import { isCompletedOn } from '@/lib/utils'
 import TodoItem from '@/components/TodoItem'
 import TodoForm from '@/components/TodoForm'
 import ProgressCards from '@/components/ProgressCards'
@@ -116,7 +117,7 @@ export default function HomePage() {
     (t) => !t.completed && t.deadline && t.deadline > todayStr
   )
   const completedToday = clipTodos.filter(
-    (t) => t.completed && t.completedAt?.startsWith(todayStr)
+    (t) => t.completed && isCompletedOn(t.completedAt, todayStr)
   )
 
   function openEdit(t: Todo) {
