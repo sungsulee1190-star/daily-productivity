@@ -4,8 +4,8 @@ import { readFileSync } from 'node:fs'
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8')
 
-test('AuthGate boots the routine store on login (P1)', () => {
-  const src = read('components/auth/AuthGate.tsx')
+test('SyncBoot boots the routine store on login (P1)', () => {
+  const src = read('components/SyncBoot.tsx')
   assert.match(src, /useRoutineStore/, 'imports useRoutineStore')
   assert.match(src, /fetchRoutines\(user\.id\)/, 'calls fetchRoutines in the login effect')
 })
@@ -51,4 +51,13 @@ test('tracker session sync carries start/end date (P6)', () => {
   assert.match(src, /end_date:\s*session\.endDate/, 'upsert sends end_date')
   assert.match(src, /startDate:\s*r\.start_date/, 'fetch maps start_date back')
   assert.match(src, /endDate:\s*r\.end_date/, 'fetch maps end_date back')
+})
+
+test('sync boot runs from the root layout, not just home (P5 regression guard)', () => {
+  const layout = read('app/layout.tsx')
+  assert.match(layout, /<SyncBoot\s*\/>/, 'layout renders <SyncBoot />')
+  const boot = read('components/SyncBoot.tsx')
+  assert.match(boot, /fetchTodos\(user\.id\)/, 'SyncBoot fetches todos')
+  assert.match(boot, /fetchRoutines\(user\.id\)/, 'SyncBoot fetches routines')
+  assert.doesNotMatch(read('components/auth/AuthGate.tsx'), /fetch(Todos|Routines|Sessions)\(/, 'AuthGate no longer double-fetches')
 })

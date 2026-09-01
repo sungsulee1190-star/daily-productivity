@@ -3,6 +3,7 @@ import './globals.css'
 import Sidebar from '@/components/Sidebar'
 import MobileHeader from '@/components/MobileHeader'
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar'
+import SyncBoot from '@/components/SyncBoot'
 import { AuthProvider } from '@/lib/auth-context'
 
 export const metadata: Metadata = {
@@ -36,6 +37,7 @@ export default function RootLayout({
       <body>
         <AuthProvider>
           <ServiceWorkerRegistrar />
+          <SyncBoot />
           <div className="flex min-h-screen">
             <Sidebar />
             <main className="flex-1 overflow-auto min-w-0" style={{ backgroundColor: 'var(--bg)' }}>

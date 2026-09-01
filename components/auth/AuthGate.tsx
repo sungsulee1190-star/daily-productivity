@@ -1,40 +1,10 @@
 'use client'
 
-import { useEffect } from 'react'
 import { useAuth } from '@/lib/auth-context'
-import { useTodoStore } from '@/store/todoStore'
-import { useHabitStore } from '@/store/habitStore'
-import { useProjectStore } from '@/store/projectStore'
-import { useNoteStore } from '@/store/noteStore'
-import { useIdeaStore } from '@/store/ideaStore'
-import { useLinkStore } from '@/store/linkStore'
-import { useTrackerStore } from '@/store/trackerStore'
-import { useRoutineStore } from '@/store/routineStore'
 import LoginPage from './LoginPage'
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
-  const { fetchTodos } = useTodoStore()
-  const { fetchHabits } = useHabitStore()
-  const { fetchProjects } = useProjectStore()
-  const { fetchNotes } = useNoteStore()
-  const { fetchIdeas } = useIdeaStore()
-  const { fetchLinks } = useLinkStore()
-  const { fetchSessions } = useTrackerStore()
-  const { fetchRoutines } = useRoutineStore()
-
-  useEffect(() => {
-    if (user) {
-      fetchTodos(user.id)
-      fetchHabits(user.id)
-      fetchProjects(user.id)
-      fetchNotes(user.id)
-      fetchIdeas(user.id)
-      fetchLinks(user.id)
-      fetchSessions(user.id)
-      fetchRoutines(user.id)
-    }
-  }, [user?.id])
 
   if (loading) {
     return (
