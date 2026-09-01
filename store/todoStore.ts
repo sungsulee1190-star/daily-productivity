@@ -188,6 +188,12 @@ export const useTodoStore = create<TodoStore>()(
               } as Todo
             })
             set({ todos: merged })
+          } else if (data && data.length === 0) {
+            // First login for an existing local-only user: push local todos up.
+            const local = get().todos
+            for (const todo of local) {
+              syncToSupabase(todo, userId)
+            }
           }
         } catch (error) {
           console.error('[TodoSync] fetchTodos failed', {

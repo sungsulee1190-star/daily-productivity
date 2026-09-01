@@ -129,7 +129,7 @@ export const useRoutineStore = create<RoutineStore>()(
             })
           }
 
-          if (data) {
+          if (data && data.length > 0) {
             set({
               routines: data.map((row) => ({
                 id: row.id,
@@ -141,6 +141,12 @@ export const useRoutineStore = create<RoutineStore>()(
                 hidden: row.hidden,
               })),
             })
+          } else if (data && data.length === 0) {
+            // First login for an existing local-only user: push local routines up.
+            const local = get().routines
+            for (const r of local) {
+              syncRoutineToSupabase(r, userId)
+            }
           }
         } catch (error) {
           console.error('[RoutineSync] fetchRoutines failed', {

@@ -32,3 +32,15 @@ test('home + progress cards no longer bucket completedAt with startsWith (P4)', 
     assert.match(src, /isCompletedOn\(/, `${p} uses isCompletedOn`)
   }
 })
+
+test('empty remote triggers local backfill for todos and routines (P3)', () => {
+  assert.match(read('store/todoStore.ts'), /data\.length === 0[\s\S]{0,240}syncToSupabase\(/, 'todoStore backfills todos on empty remote')
+  assert.match(read('store/routineStore.ts'), /data\.length === 0[\s\S]{0,240}syncRoutineToSupabase\(/, 'routineStore backfills routines on empty remote')
+})
+
+test('stores do not persist userId to localStorage (P5)', () => {
+  for (const p of ['store/todoStore.ts', 'store/routineStore.ts', 'store/trackerStore.ts', 'store/linkStore.ts', 'store/projectStore.ts']) {
+    assert.match(read(p), /partialize:\s*\(/, `${p} has a partialize`)
+    assert.doesNotMatch(read(p), /partialize:\s*\([^)]*\)\s*=>\s*\(\{[^}]*userId/, `${p} partialize omits userId`)
+  }
+})
