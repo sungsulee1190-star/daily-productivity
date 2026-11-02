@@ -9,11 +9,12 @@ import {
   Network, ChevronLeft, ChevronRight, X,
   List, Sun, Bot, PlusCircle,
   Clock, PlayCircle, CheckCircle2,
-  CalendarDays, Link2, Plus, Trash2, ClipboardList,
+  CalendarDays, Link2, Plus, Trash2, ClipboardList, LogOut,
 } from 'lucide-react'
 import { useTodoStore } from '@/store/todoStore'
 import { useUIStore } from '@/store/uiStore'
 import { useLinkStore } from '@/store/linkStore'
+import { useAuth } from '@/lib/auth-context'
 
 const workNavItems = [
   { href: '/', label: '홈', icon: Home },
@@ -152,6 +153,7 @@ export default function Sidebar() {
   const { activeClip, setActiveClip } = useTodoStore()
   const { sidebarCollapsed, mobileSidebarOpen, toggleSidebar, setMobileSidebarOpen } = useUIStore()
   const { links, addLink, deleteLink } = useLinkStore()
+  const { user, signOut } = useAuth()
   const [addingLink, setAddingLink] = useState(false)
   const [hoveredLinkId, setHoveredLinkId] = useState<string | null>(null)
 
@@ -405,6 +407,20 @@ export default function Sidebar() {
               defaultStyle={defaultStyle}
               onClick={closeDrawer}
             />
+            <button
+              onClick={() => {
+                if (confirm(`${user?.email ?? ''} 계정에서 로그아웃할까요?`)) signOut()
+              }}
+              title={collapsed ? '로그아웃' : user?.email ?? undefined}
+              className={[
+                'w-full flex items-center gap-2.5 rounded-xl text-sm font-medium transition-all',
+                collapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2',
+              ].join(' ')}
+              style={defaultStyle}
+            >
+              <LogOut size={15} strokeWidth={1.8} className="flex-shrink-0" />
+              {!collapsed && '로그아웃'}
+            </button>
           </div>
         </nav>
 

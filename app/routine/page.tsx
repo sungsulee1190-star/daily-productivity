@@ -5,9 +5,8 @@ import { Plus, X } from 'lucide-react'
 import { format, startOfWeek, startOfMonth, endOfMonth, addDays } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import { useAuth } from '@/lib/auth-context'
-import { useRoutineStore, Routine, syncRoutineToSupabase } from '@/store/routineStore'
+import { useRoutineStore, Routine } from '@/store/routineStore'
 
-export { syncRoutineToSupabase }
 
 function getMonthWeeks(year: number, month: number): Array<{ label: string; key: string; start: Date; end: Date }> {
   const firstDay = startOfMonth(new Date(year, month - 1))
