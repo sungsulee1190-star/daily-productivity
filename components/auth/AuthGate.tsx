@@ -2,9 +2,10 @@
 
 import { useAuth } from '@/lib/auth-context'
 import LoginPage from './LoginPage'
+import SetNewPassword from './SetNewPassword'
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
+  const { user, loading, recoveryPending } = useAuth()
 
   if (loading) {
     return (
@@ -22,6 +23,10 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return <LoginPage />
+  }
+
+  if (recoveryPending) {
+    return <SetNewPassword />
   }
 
   return <>{children}</>

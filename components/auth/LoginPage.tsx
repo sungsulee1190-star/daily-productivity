@@ -19,7 +19,7 @@ function toKoreanAuthError(message: string): string {
 }
 
 export default function LoginPage() {
-  const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth()
+  const { signInWithGoogle, signInWithEmail, signUpWithEmail, requestPasswordReset } = useAuth()
   const [isSignUp, setIsSignUp] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -56,6 +56,23 @@ export default function LoginPage() {
       setMessage('가입 확인 이메일을 발송했습니다. 이메일을 확인해주세요.')
     }
 
+    setLoading(false)
+  }
+
+  const handleForgotPassword = async () => {
+    setError(null)
+    setMessage(null)
+    if (!email) {
+      setError('비밀번호를 재설정할 이메일을 먼저 입력해주세요.')
+      return
+    }
+    setLoading(true)
+    const { error } = await requestPasswordReset(email)
+    if (error) setError(toKoreanAuthError(error))
+    else
+      setMessage(
+        '비밀번호 재설정 메일을 보냈습니다. 반드시 지금 이 브라우저에서 메일의 링크를 열어주세요.'
+      )
     setLoading(false)
   }
 
@@ -181,6 +198,20 @@ export default function LoginPage() {
             {loading ? '처리 중...' : isSignUp ? '회원가입' : '로그인'}
           </button>
         </form>
+
+        {!isSignUp && (
+          <p className="text-center text-xs mt-4">
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              disabled={loading}
+              className="disabled:opacity-50"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              비밀번호를 잊으셨나요?
+            </button>
+          </p>
+        )}
 
         {/* 회원가입/로그인 전환 */}
         <p className="text-center text-xs mt-5" style={{ color: 'var(--text-muted)' }}>

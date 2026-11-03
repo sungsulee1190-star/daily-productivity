@@ -13,6 +13,25 @@ interface AuthContextType {
   signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>
   signUpWithEmail: (email: string, password: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
+  /** True after the user arrived via a password-reset email link. */
+  recoveryPending: boolean
+  requestPasswordReset: (email: string) => Promise<{ error: string | null }>
+  updatePassword: (password: string) => Promise<{ error: string | null }>
+}
+
+// Set when a reset email is requested; the link must be opened in this same
+// browser (PKCE), so seeing it after login means "show the new-password form".
+// Works regardless of which allowed redirect URL Supabase lands on.
+const RECOVERY_KEY = 'daily-password-recovery'
+const RECOVERY_TTL_MS = 60 * 60 * 1000
+
+function hasRecoveryFlag(): boolean {
+  try {
+    const at = Number(localStorage.getItem(RECOVERY_KEY))
+    return Boolean(at) && Date.now() - at < RECOVERY_TTL_MS
+  } catch {
+    return false
+  }
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -21,6 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [recoveryPending, setRecoveryPending] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -34,6 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       setSession(session)
       setUser(session?.user ?? null)
+      if (session?.user && hasRecoveryFlag()) setRecoveryPending(true)
       setLoading(false)
     }
 
@@ -49,7 +70,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => applySession(session))
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') setRecoveryPending(true)
+      applySession(session)
+    })
 
     return () => subscription.unsubscribe()
   }, [])
@@ -85,6 +109,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: null }
   }
 
+  const requestPasswordReset = async (email: string) => {
+    const supabase = createClient()
+    try {
+      localStorage.setItem(RECOVERY_KEY, String(Date.now()))
+    } catch {
+      // without the flag the PASSWORD_RECOVERY event is the only trigger
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/api/auth/callback`,
+    })
+    return { error: error?.message ?? null }
+  }
+
+  const updatePassword = async (password: string) => {
+    const supabase = createClient()
+    const { error } = await supabase.auth.updateUser({ password })
+    if (error) return { error: error.message }
+    try {
+      localStorage.removeItem(RECOVERY_KEY)
+    } catch {}
+    setRecoveryPending(false)
+    return { error: null }
+  }
+
   const signOut = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
@@ -95,7 +143,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, session, loading, signInWithGoogle, signInWithEmail, signUpWithEmail, signOut }}
+      value={{
+        user,
+        session,
+        loading,
+        signInWithGoogle,
+        signInWithEmail,
+        signUpWithEmail,
+        signOut,
+        recoveryPending,
+        requestPasswordReset,
+        updatePassword,
+      }}
     >
       {children}
     </AuthContext.Provider>
