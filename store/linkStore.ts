@@ -3,6 +3,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { createClient } from '@/lib/supabase'
+import { markPending, clearPending, mergeWithPending } from '@/lib/sync-pending'
 
 export interface QuickLink {
   id: string
@@ -21,6 +22,7 @@ interface LinkStore {
 }
 
 async function syncLinkToSupabase(link: QuickLink, userId: string) {
+  markPending('links', link.id)
   if (!userId) {
     console.warn('[LinkSync] Cannot sync: userId is null', { linkId: link.id })
     return
@@ -46,6 +48,7 @@ async function syncLinkToSupabase(link: QuickLink, userId: string) {
       })
       return
     }
+    clearPending('links', link.id)
     console.debug('[LinkSync] Upsert successful', { id: link.id })
   } catch (error) {
     console.error('[LinkSync] Upsert failed', {
@@ -83,14 +86,15 @@ export const useLinkStore = create<LinkStore>()(
           }
 
           if (data && data.length > 0) {
-            set({
-              links: data.map((r) => ({
-                id: r.id,
-                title: r.title,
-                url: r.url,
-                emoji: r.emoji,
-              })),
-            })
+            const remote: QuickLink[] = data.map((r) => ({
+              id: r.id,
+              title: r.title,
+              url: r.url,
+              emoji: r.emoji,
+            }))
+            const { items, toUpload } = mergeWithPending('links', remote, get().links)
+            set({ links: items })
+            toUpload.forEach((l) => syncLinkToSupabase(l, userId))
           } else if (data && data.length === 0) {
             // Push existing local links to Supabase on first login
             const local = get().links

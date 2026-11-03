@@ -4,6 +4,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { format } from 'date-fns'
 import { createClient } from '@/lib/supabase'
+import { markPending, clearPending, mergeWithPending } from '@/lib/sync-pending'
 
 export type TrackerStatus = 'pending' | 'in_progress' | 'done' | 'blocked'
 
@@ -46,6 +47,7 @@ interface TrackerStore {
 }
 
 async function syncSessionToSupabase(session: TrackerSession, userId: string) {
+  markPending('tracker_sessions', session.id)
   if (!userId) {
     console.warn('[TrackerSync] Cannot sync: userId is null', { sessionId: session.id })
     return
@@ -75,6 +77,7 @@ async function syncSessionToSupabase(session: TrackerSession, userId: string) {
       })
       return
     }
+    clearPending('tracker_sessions', session.id)
     console.debug('[TrackerSync] Upsert successful', { id: session.id })
   } catch (error) {
     console.error('[TrackerSync] Upsert failed', {
@@ -113,8 +116,7 @@ export const useTrackerStore = create<TrackerStore>()(
 
           if (data && data.length > 0) {
             const localSessions = get().sessions
-            set({
-              sessions: data.map((r) => {
+            const remote: TrackerSession[] = data.map((r) => {
                 const local = localSessions.find((s) => s.id === r.id)
                 return {
                   id: r.id,
@@ -126,8 +128,10 @@ export const useTrackerStore = create<TrackerStore>()(
                   createdAt: r.created_at,
                   updatedAt: r.updated_at,
                 }
-              }),
-            })
+              })
+            const { items, toUpload } = mergeWithPending('tracker_sessions', remote, localSessions)
+            set({ sessions: items })
+            toUpload.forEach((s) => syncSessionToSupabase(s, userId))
           } else if (data && data.length === 0) {
             // Push existing local sessions to Supabase on first login
             const local = get().sessions

@@ -20,6 +20,7 @@ const USER_DATA_KEYS = [
   'daily-agent-store',
   'openai-api-key',
   'supabase-migration-done',
+  'daily-sync-pending',
 ]
 
 export function clearLocalUserData() {
