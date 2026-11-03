@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { createClient } from '@/lib/supabase'
 import type { Json } from '@/lib/database.types'
+import { markPending, clearPending, mergeWithPending } from '@/lib/sync-pending'
 
 export type ClipType = 'work' | 'personal'
 export type Priority = 'high' | 'medium' | 'low'
@@ -53,6 +54,7 @@ interface TodoStore {
 }
 
 async function syncToSupabase(todo: Todo, userId: string) {
+  markPending('todos', todo.id)
   if (!userId) {
     console.warn('[TodoSync] Cannot sync: userId is null', { todoId: todo.id })
     return
@@ -87,6 +89,7 @@ async function syncToSupabase(todo: Todo, userId: string) {
       })
       return
     }
+    clearPending('todos', todo.id)
     console.debug('[TodoSync] Upsert successful', { id: todo.id })
   } catch (error) {
     console.error('[TodoSync] Upsert failed', {
@@ -187,7 +190,10 @@ export const useTodoStore = create<TodoStore>()(
                 kanbanStatus: row.kanban_status ?? local?.kanbanStatus ?? (row.completed ? 'done' : 'backlog'),
               } as Todo
             })
-            set({ todos: merged })
+            // Keep local todos whose upload never reached the server and retry them.
+            const { items, toUpload } = mergeWithPending('todos', merged, localTodos)
+            set({ todos: items })
+            toUpload.forEach((t) => syncToSupabase(t, userId))
           } else if (data && data.length === 0) {
             // First login for an existing local-only user: push local todos up.
             const local = get().todos

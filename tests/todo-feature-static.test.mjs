@@ -8,6 +8,7 @@ const todoItem = read('components/TodoItem.tsx')
 const dailyPage = read('app/todo/daily/page.tsx')
 const allTodosPage = read('app/todo/all/page.tsx')
 const routinePage = read('app/routine/page.tsx')
+const routineStore = read('store/routineStore.ts')
 const databaseTypes = read('lib/database.types.ts')
 const migration = read('scripts/migration_add_todo_extended_fields.sql')
 
@@ -34,7 +35,8 @@ assert.match(dailyPage, /todo\.tags\.some/, 'daily page can filter by tags')
 assert.match(allTodosPage, /t\.tags\.some/, 'all todos search includes tags')
 
 assert.match(routinePage, /fetchRoutines/, 'routine page fetches routines from Supabase')
-assert.match(routinePage, /syncRoutineToSupabase/, 'routine page syncs routine changes to Supabase')
+assert.match(routineStore, /syncRoutineToSupabase\(/, 'routine store syncs routine changes to Supabase')
+assert.doesNotMatch(routinePage, /^export \{/m, 'page files must not re-export helpers (breaks next build)')
 assert.match(databaseTypes, /routines:/, 'database type includes routines table')
 assert.match(migration, /create table if not exists public\.routines/, 'migration creates routines table')
 

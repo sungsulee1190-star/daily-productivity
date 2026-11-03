@@ -4,6 +4,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { format } from 'date-fns'
 import { createClient } from '@/lib/supabase'
+import { markPending, clearPending, mergeWithPending } from '@/lib/sync-pending'
 
 export interface Routine {
   id: string
@@ -27,6 +28,7 @@ export interface RoutineStore {
 }
 
 export async function syncRoutineToSupabase(routine: Routine, userId: string) {
+  markPending('routines', routine.id)
   if (!userId) {
     console.warn('[RoutineSync] Cannot sync: userId is null', { routineId: routine.id })
     return
@@ -56,6 +58,7 @@ export async function syncRoutineToSupabase(routine: Routine, userId: string) {
       })
       return
     }
+    clearPending('routines', routine.id)
     console.debug('[RoutineSync] Upsert successful', { id: routine.id })
   } catch (error) {
     console.error('[RoutineSync] Upsert failed', {
@@ -130,8 +133,7 @@ export const useRoutineStore = create<RoutineStore>()(
           }
 
           if (data && data.length > 0) {
-            set({
-              routines: data.map((row) => ({
+            const remote: Routine[] = data.map((row) => ({
                 id: row.id,
                 title: row.title,
                 type: row.type as 'weekly' | 'monthly' | 'daily',
@@ -139,8 +141,10 @@ export const useRoutineStore = create<RoutineStore>()(
                 checkedMonths: row.checked_months ?? [],
                 checkedDays: row.checked_days ?? [],
                 hidden: row.hidden,
-              })),
-            })
+              }))
+            const { items, toUpload } = mergeWithPending('routines', remote, get().routines)
+            set({ routines: items })
+            toUpload.forEach((r) => syncRoutineToSupabase(r, userId))
           } else if (data && data.length === 0) {
             // First login for an existing local-only user: push local routines up.
             const local = get().routines

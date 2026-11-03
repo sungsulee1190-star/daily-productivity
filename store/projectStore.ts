@@ -3,6 +3,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { createClient } from '@/lib/supabase'
+import { markPending, clearPending, mergeWithPending } from '@/lib/sync-pending'
 
 export type ProjectType = 'dev' | 'personal'
 export type ProjectStatus = 'active' | 'paused' | 'completed'
@@ -57,6 +58,7 @@ function toSupabaseStatus(status: ProjectStatus): 'active' | 'paused' | 'done' {
 }
 
 async function syncProjectToSupabase(project: Project, userId: string) {
+  markPending('projects', project.id)
   if (!userId) {
     console.warn('[ProjectSync] Cannot sync: userId is null', { projectId: project.id })
     return
@@ -86,6 +88,7 @@ async function syncProjectToSupabase(project: Project, userId: string) {
       })
       return
     }
+    clearPending('projects', project.id)
     console.debug('[ProjectSync] Upsert successful', { id: project.id })
   } catch (error) {
     console.error('[ProjectSync] Upsert failed', {
@@ -167,7 +170,9 @@ export const useProjectStore = create<ProjectStore>()(
                 updatedAt: row.updated_at,
               } as Project
             })
-            set({ projects: merged })
+            const { items, toUpload } = mergeWithPending('projects', merged, localProjects)
+            set({ projects: items })
+            toUpload.forEach((p) => syncProjectToSupabase(p, userId))
           }
         } catch (error) {
           console.error('[ProjectSync] fetchProjects failed', {

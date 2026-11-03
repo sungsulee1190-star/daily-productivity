@@ -12,7 +12,6 @@ import HomeTrackerWidget from '@/components/home/HomeTrackerWidget'
 import type { Todo } from '@/store/todoStore'
 import { format } from 'date-fns'
 import { ko } from 'date-fns/locale'
-import AuthGate from '@/components/auth/AuthGate'
 import MigrationBanner from '@/components/MigrationBanner'
 
 const DEFAULT_VISIBLE = 8
@@ -126,7 +125,7 @@ export default function HomePage() {
   }
 
   return (
-    <AuthGate>
+    <>
       <MigrationBanner />
       <div className="max-w-6xl mx-auto px-4 md:px-8 py-6 md:py-8">
         {/* Top Header */}
@@ -231,6 +230,6 @@ export default function HomePage() {
           />
         )}
       </div>
-    </AuthGate>
+    </>
   )
 }

@@ -3,6 +3,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { createClient } from '@/lib/supabase'
+import { markPending, clearPending, mergeWithPending } from '@/lib/sync-pending'
 
 export type CliTool = 'claude' | 'codex' | 'gemini' | 'auto'
 export type IdeaStatus = 'inbox' | 'ready' | 'in_progress' | 'done'
@@ -19,6 +20,30 @@ export interface Idea {
   generated_script: string | null
   created_at: string
   updated_at: string
+}
+
+// supabase-js reports failures via `{ error }`, not exceptions — check it so
+// failed writes stay pending and are retried on the next fetch.
+async function syncIdeaToSupabase(idea: Idea, userId: string) {
+  markPending('ideas', idea.id)
+  const supabase = createClient()
+  const { error } = await supabase.from('ideas').upsert({
+    id: idea.id,
+    user_id: userId,
+    title: idea.title,
+    description: idea.description,
+    cli_tool: idea.cli_tool,
+    status: idea.status,
+    priority: idea.priority,
+    generated_script: idea.generated_script,
+    created_at: idea.created_at,
+    updated_at: idea.updated_at,
+  })
+  if (error) {
+    console.error('[IdeaSync] Upsert failed', { ideaId: idea.id, error: error.message, code: error.code })
+    return
+  }
+  clearPending('ideas', idea.id)
 }
 
 interface IdeaStore {
@@ -43,7 +68,11 @@ export const useIdeaStore = create<IdeaStore>()(
             .eq('user_id', userId)
             .order('created_at', { ascending: false })
           if (error) throw error
-          if (data) set({ ideas: data as Idea[] })
+          if (data) {
+            const { items, toUpload } = mergeWithPending('ideas', data as Idea[], get().ideas)
+            set({ ideas: items })
+            toUpload.forEach((i) => syncIdeaToSupabase(i, userId))
+          }
         } catch (e) {
           console.error('fetchIdeas error:', e)
         }
@@ -60,17 +89,7 @@ export const useIdeaStore = create<IdeaStore>()(
         }
         set((s) => ({ ideas: [newIdea, ...s.ideas] }))
         try {
-          const supabase = createClient()
-          await supabase.from('ideas').insert({
-            id: newIdea.id,
-            user_id: userId,
-            title: newIdea.title,
-            description: newIdea.description,
-            cli_tool: newIdea.cli_tool,
-            status: newIdea.status,
-            priority: newIdea.priority,
-            generated_script: newIdea.generated_script,
-          })
+          await syncIdeaToSupabase(newIdea, userId)
         } catch (e) {
           console.error('addIdea sync error:', e)
         }
@@ -83,9 +102,9 @@ export const useIdeaStore = create<IdeaStore>()(
             i.id === id ? { ...i, ...updates, updated_at: now } : i
           ),
         }))
+        const updated = get().ideas.find((i) => i.id === id)
         try {
-          const supabase = createClient()
-          await supabase.from('ideas').update({ ...updates, updated_at: now }).eq('id', id)
+          if (updated?.user_id) await syncIdeaToSupabase(updated, updated.user_id)
         } catch (e) {
           console.error('updateIdea sync error:', e)
         }
@@ -95,7 +114,9 @@ export const useIdeaStore = create<IdeaStore>()(
         set((s) => ({ ideas: s.ideas.filter((i) => i.id !== id) }))
         try {
           const supabase = createClient()
-          await supabase.from('ideas').delete().eq('id', id)
+          const { error } = await supabase.from('ideas').delete().eq('id', id)
+          if (error) console.error('[IdeaSync] Delete failed', { ideaId: id, error: error.message })
+          clearPending('ideas', id)
         } catch (e) {
           console.error('deleteIdea sync error:', e)
         }

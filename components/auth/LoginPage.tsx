@@ -1,16 +1,44 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
 
+// Supabase returns English messages; translate the ones users actually hit.
+function toKoreanAuthError(message: string): string {
+  const m = message.toLowerCase()
+  if (m.includes('invalid login credentials')) return '이메일 또는 비밀번호가 올바르지 않습니다.'
+  if (m.includes('email not confirmed')) return '이메일 인증이 완료되지 않았습니다. 받은편지함의 확인 메일을 눌러주세요.'
+  if (m.includes('user already registered')) return '이미 가입된 이메일입니다. 로그인해주세요.'
+  if (m.includes('rate limit')) return '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.'
+  if (m.includes('failed to fetch') || m.includes('network'))
+    return '인증 서버에 연결할 수 없습니다. 네트워크 또는 Supabase 프로젝트 상태(일시정지 여부)를 확인해주세요.'
+  if (m.includes('provider is not enabled')) return '해당 로그인 방식이 Supabase에서 활성화되어 있지 않습니다.'
+  if (m.includes('code verifier') || m.includes('invalid flow state'))
+    return '로그인 링크가 만료되었거나 다른 브라우저에서 열렸습니다. 같은 브라우저에서 다시 시도해주세요.'
+  return message
+}
+
 export default function LoginPage() {
-  const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth()
+  const { signInWithGoogle, signInWithEmail, signUpWithEmail, requestPasswordReset } = useAuth()
   const [isSignUp, setIsSignUp] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  // Errors forwarded by /api/auth/callback (OAuth / email-confirmation failures)
+  const [error, setError] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    const authError = new URLSearchParams(window.location.search).get('auth_error')
+    return authError ? toKoreanAuthError(authError) : null
+  })
   const [message, setMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (!params.has('auth_error')) return
+    params.delete('auth_error')
+    const qs = params.toString()
+    window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''))
+  }, [])
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -23,7 +51,7 @@ export default function LoginPage() {
       : await signInWithEmail(email, password)
 
     if (result.error) {
-      setError(result.error)
+      setError(toKoreanAuthError(result.error))
     } else if (isSignUp) {
       setMessage('가입 확인 이메일을 발송했습니다. 이메일을 확인해주세요.')
     }
@@ -31,10 +59,28 @@ export default function LoginPage() {
     setLoading(false)
   }
 
+  const handleForgotPassword = async () => {
+    setError(null)
+    setMessage(null)
+    if (!email) {
+      setError('비밀번호를 재설정할 이메일을 먼저 입력해주세요.')
+      return
+    }
+    setLoading(true)
+    const { error } = await requestPasswordReset(email)
+    if (error) setError(toKoreanAuthError(error))
+    else
+      setMessage(
+        '비밀번호 재설정 메일을 보냈습니다. 반드시 지금 이 브라우저에서 메일의 링크를 열어주세요.'
+      )
+    setLoading(false)
+  }
+
   const handleGoogle = async () => {
     setLoading(true)
     setError(null)
-    await signInWithGoogle()
+    const { error } = await signInWithGoogle()
+    if (error) setError(toKoreanAuthError(error))
     setLoading(false)
   }
 
@@ -152,6 +198,20 @@ export default function LoginPage() {
             {loading ? '처리 중...' : isSignUp ? '회원가입' : '로그인'}
           </button>
         </form>
+
+        {!isSignUp && (
+          <p className="text-center text-xs mt-4">
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              disabled={loading}
+              className="disabled:opacity-50"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              비밀번호를 잊으셨나요?
+            </button>
+          </p>
+        )}
 
         {/* 회원가입/로그인 전환 */}
         <p className="text-center text-xs mt-5" style={{ color: 'var(--text-muted)' }}>

@@ -5,6 +5,7 @@ import MobileHeader from '@/components/MobileHeader'
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar'
 import SyncBoot from '@/components/SyncBoot'
 import { AuthProvider } from '@/lib/auth-context'
+import AuthGate from '@/components/auth/AuthGate'
 
 export const metadata: Metadata = {
   title: '데일리 — 일상 생산성 앱',
@@ -38,13 +39,15 @@ export default function RootLayout({
         <AuthProvider>
           <ServiceWorkerRegistrar />
           <SyncBoot />
-          <div className="flex min-h-screen">
-            <Sidebar />
-            <main className="flex-1 overflow-auto min-w-0" style={{ backgroundColor: 'var(--bg)' }}>
-              <MobileHeader />
-              {children}
-            </main>
-          </div>
+          <AuthGate>
+            <div className="flex min-h-screen">
+              <Sidebar />
+              <main className="flex-1 overflow-auto min-w-0" style={{ backgroundColor: 'var(--bg)' }}>
+                <MobileHeader />
+                {children}
+              </main>
+            </div>
+          </AuthGate>
         </AuthProvider>
       </body>
     </html>
