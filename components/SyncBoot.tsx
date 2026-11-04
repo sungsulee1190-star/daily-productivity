@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { useAuth } from '@/lib/auth-context'
+import { createClient } from '@/lib/supabase'
 import { useTodoStore } from '@/store/todoStore'
 import { useHabitStore } from '@/store/habitStore'
 import { useProjectStore } from '@/store/projectStore'
@@ -37,6 +38,34 @@ export default function SyncBoot() {
     fetchLinks(user.id)
     fetchSessions(user.id)
     fetchRoutines(user.id)
+
+    const handleRefresh = () => {
+      if (document.visibilityState === 'visible') {
+        fetchTodos(user.id)
+        fetchRoutines(user.id)
+      }
+    }
+
+    window.addEventListener('focus', handleRefresh)
+    document.addEventListener('visibilitychange', handleRefresh)
+
+    const supabase = createClient()
+    const channel = supabase
+      .channel('todos-realtime-sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'todos', filter: `user_id=eq.${user.id}` },
+        () => {
+          fetchTodos(user.id)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      window.removeEventListener('focus', handleRefresh)
+      document.removeEventListener('visibilitychange', handleRefresh)
+      void supabase.removeChannel(channel)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
 
