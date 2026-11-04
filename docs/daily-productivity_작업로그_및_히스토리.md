@@ -95,3 +95,11 @@
   - 미등록 대기 중이던 4건(`Special Indent 확대를 위한 Big Printer List 작성`, `Inkjet Test: 필요한 사이즈, 수량 확인`, `Uncoated Paper Feedback`, `CHP 고평량 오더 조기 생산 요청 및 납기 확인` + 하위 체크리스트 3개) 실제 Supabase DB 등록 및 `list_todos` read-back 검증 통과(`count: 4`).
   - `node --test --test-isolation=none tests/sync-reliability.test.mjs tests/todo-feature-static.test.mjs`: 9/9 PASS.
   - `npx tsc --noEmit` 및 `npm run build`: PASS.
+
+
+## 2026-11-04 17:57 KST `/grill-with-docs` 교차 검증 및 최종 작업 저장 — COMPLETE
+- **추가 보완 사항 (`main` @ `9233d23`)**:
+  - `lib/auth-context.tsx`: 기존 브라우저에 다른 이메일 세션이 남아 있더라도 `WORKSPACE_AUTO_EMAIL`과 일치하지 않으면 전용 워크스페이스 세션으로 자동 전환하여 계정 불일치 방지.
+  - `store/todoStore.ts`: 원격 DB에 데이터가 이미 존재할 때도 최초 1회(`daily-productivity-backfilled-${userId}`) 로컬 미동기화 할 일을 병합·백필하여 로컬 데이터 유실 방지.
+  - `CONTEXT.md` 및 `docs/adr/0001-workspace-auto-session-and-mcp.md`: 도메인 용어집 및 아키텍처 결정 기록(ADR) 문서화 완료.
+- **최종 상태**: GitHub `main` 브랜치 푸시(`9233d23`) 및 Vercel 배포 반영, 대기 할 일 4건 DB 등록 완료, Hermes/Antigravity MCP 연결 완료.
