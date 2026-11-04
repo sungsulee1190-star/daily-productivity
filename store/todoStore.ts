@@ -187,7 +187,19 @@ export const useTodoStore = create<TodoStore>()(
                 kanbanStatus: row.kanban_status ?? local?.kanbanStatus ?? (row.completed ? 'done' : 'backlog'),
               } as Todo
             })
-            set({ todos: merged })
+            const backfillKey = `daily-productivity-backfilled-${userId}`
+            const alreadyBackfilled =
+              typeof window !== 'undefined' && localStorage.getItem(backfillKey) === '1'
+            const unsyncedLocal = alreadyBackfilled
+              ? []
+              : localTodos.filter((lt) => !data.some((row) => row.id === lt.id || row.title === lt.title))
+            for (const todo of unsyncedLocal) {
+              syncToSupabase(todo, userId)
+            }
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(backfillKey, '1')
+            }
+            set({ todos: [...merged, ...unsyncedLocal] })
           } else if (data && data.length === 0) {
             // First login for an existing local-only user: push local todos up.
             const local = get().todos

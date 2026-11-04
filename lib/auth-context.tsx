@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         data: { session: existingSession },
       } = await supabase.auth.getSession()
 
-      if (existingSession?.user) {
+      if (existingSession?.user && existingSession.user.email === WORKSPACE_AUTO_EMAIL) {
         setSession(existingSession)
         setUser(existingSession.user)
         setLoading(false)
