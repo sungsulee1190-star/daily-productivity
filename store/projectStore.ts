@@ -69,9 +69,7 @@ async function syncProjectToSupabase(project: Project, userId: string) {
       user_id: userId,
       name: project.title,
       status: toSupabaseStatus(project.status),
-      repo_url: null,
       notes: project.ideaDump || null,
-      tech_stack: null,
       created_at: project.createdAt,
       updated_at: project.updatedAt,
     })

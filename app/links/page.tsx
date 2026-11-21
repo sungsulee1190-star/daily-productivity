@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Plus, ExternalLink, Pencil, Trash2, X, Check } from 'lucide-react'
 import { useLinkStore, QuickLink } from '@/store/linkStore'
 import { useAuth } from '@/lib/auth-context'
+import DeploymentLinks from '@/components/DeploymentLinks'
 
 const EMOJI_OPTIONS = ['🔗', '📊', '📄', '📁', '🌐', '📧', '📅', '💬', '🎯', '⚙️', '📝', '🔧']
 
@@ -191,13 +192,9 @@ function LinkCard({ link, onDelete, onUpdate }: LinkCardProps) {
 }
 
 export default function LinksPage() {
-  const { links, addLink, updateLink, deleteLink, fetchLinks } = useLinkStore()
+  const { links, addLink, updateLink, deleteLink, userId, loading } = useLinkStore()
   const [showForm, setShowForm] = useState(false)
   const { user } = useAuth()
-
-  useEffect(() => {
-    if (user) fetchLinks(user.id)
-  }, [user?.id])
 
   return (
     <div className="flex-1 min-w-0 p-4 md:p-6 max-w-3xl mx-auto w-full">
@@ -249,6 +246,14 @@ export default function LinksPage() {
               onUpdate={updateLink}
             />
           ))}
+        </div>
+      )}
+      {user && (
+        <div className="mt-8">
+          <DeploymentLinks
+            savedUrls={links.map(link => link.url)}
+            onSave={userId === user.id && !loading ? (title, url) => addLink({ title, url, emoji: '🔗' }) : undefined}
+          />
         </div>
       )}
     </div>

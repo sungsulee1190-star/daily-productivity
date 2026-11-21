@@ -16,6 +16,7 @@ import { useUIStore } from '@/store/uiStore'
 import { useLinkStore } from '@/store/linkStore'
 
 const workNavItems = [
+  { href: '/agents', label: '에이전트 관리', icon: Bot },
   { href: '/', label: '홈', icon: Home },
   { href: '/todo/daily', label: '오늘 할 일', icon: Sun },
   { href: '/todo/all', label: '전체 목록', icon: List },
@@ -28,6 +29,7 @@ const workNavItems = [
 ]
 
 const personalNavItems = [
+  { href: '/agents', label: '에이전트 관리', icon: Bot },
   { href: '/', label: '홈', icon: Home },
   { href: '/projects', label: '프로젝트', icon: FolderKanban },
   { href: '/ideas', label: '아이디어', icon: Bot },

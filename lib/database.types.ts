@@ -187,7 +187,7 @@ export interface Database {
           status: 'active' | 'paused' | 'done'
           repo_url: string | null
           notes: string | null
-          tech_stack: string | null
+          tech_stack: string[] | null
           created_at: string
           updated_at: string
         }
@@ -198,7 +198,7 @@ export interface Database {
           status?: 'active' | 'paused' | 'done'
           repo_url?: string | null
           notes?: string | null
-          tech_stack?: string | null
+          tech_stack?: string[] | null
           created_at?: string
           updated_at?: string
         }
@@ -209,7 +209,7 @@ export interface Database {
           status?: 'active' | 'paused' | 'done'
           repo_url?: string | null
           notes?: string | null
-          tech_stack?: string | null
+          tech_stack?: string[] | null
           created_at?: string
           updated_at?: string
         }

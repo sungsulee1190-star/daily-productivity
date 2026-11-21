@@ -14,6 +14,7 @@ export interface QuickLink {
 interface LinkStore {
   links: QuickLink[]
   userId: string | null
+  loading: boolean
   fetchLinks: (userId: string) => Promise<void>
   addLink: (link: Omit<QuickLink, 'id'>) => void
   updateLink: (id: string, updates: Partial<Omit<QuickLink, 'id'>>) => void
@@ -62,9 +63,10 @@ export const useLinkStore = create<LinkStore>()(
     (set, get) => ({
       links: [],
       userId: null,
+      loading: false,
 
       fetchLinks: async (userId: string) => {
-        set({ userId })
+        set({ userId, loading: true })
         try {
           const supabase = createClient()
           const { data, error } = await supabase
@@ -103,6 +105,8 @@ export const useLinkStore = create<LinkStore>()(
             userId,
             error: error instanceof Error ? error.message : String(error),
           })
+        } finally {
+          set({ loading: false })
         }
       },
 
