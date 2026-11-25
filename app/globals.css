@@ -5,6 +5,7 @@
   --surface: #FFFFFF;
   --surface-2: #FFF1E6;
   --accent: #F97316;
+  --accent-ink: #9A3412;
   --accent-light: #FED7AA;
   --accent-hover: #EA6C0A;
   --text-primary: #1C1917;
@@ -22,6 +23,11 @@ body {
   color: var(--text-primary);
   font-family: 'Pretendard', 'Apple SD Gothic Neo', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+.home-focus:focus-visible {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 2px;
 }
 
 ::-webkit-scrollbar {

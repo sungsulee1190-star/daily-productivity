@@ -177,14 +177,15 @@ export default function Sidebar() {
 
       {/* Sidebar */}
       <aside
+        id="app-sidebar"
         style={{ backgroundColor: 'var(--surface)', borderRight: '1px solid var(--border)' }}
         className={[
           'fixed inset-y-0 left-0 z-50 flex flex-col flex-shrink-0',
           'md:sticky md:top-0 md:z-auto md:h-screen',
           'w-64',
           collapsed ? 'md:w-14' : 'md:w-56',
-          mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
-          'transition-all duration-200',
+          mobileSidebarOpen ? 'visible translate-x-0' : 'invisible -translate-x-full md:visible md:translate-x-0',
+          'motion-safe:transition-transform motion-safe:duration-200',
         ].join(' ')}
       >
         {/* Header */}
@@ -197,15 +198,17 @@ export default function Sidebar() {
           ) : (
             <>
               <div className="flex-1 min-w-0">
-                <h1 className="text-base font-bold leading-none" style={{ color: 'var(--accent)' }}>✦ 데일리</h1>
+                <p className="text-base font-bold leading-none" style={{ color: 'var(--accent)' }}>데일리</p>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>일상 생산성 앱</p>
               </div>
               <button
+                type="button"
                 onClick={closeDrawer}
-                className="md:hidden p-1.5 rounded-lg transition-colors"
+                aria-label="메뉴 닫기"
+                className="home-focus inline-grid size-11 place-items-center rounded-lg md:hidden"
                 style={{ color: 'var(--text-muted)' }}
               >
-                <X size={16} />
+                <X size={18} aria-hidden="true" />
               </button>
             </>
           )}

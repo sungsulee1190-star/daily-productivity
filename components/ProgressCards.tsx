@@ -1,6 +1,6 @@
 'use client'
 
-import { useTodoStore, type Todo } from '@/store/todoStore'
+import { useTodoStore } from '@/store/todoStore'
 import { format } from 'date-fns'
 import { isThisWeek, isThisMonth, isCompletedOn } from '@/lib/utils'
 
@@ -8,45 +8,27 @@ interface StatCardProps {
   label: string
   done: number
   total: number
-  color: string
-  emoji: string
+  highlight?: boolean
 }
 
-function StatCard({ label, done, total, color, emoji }: StatCardProps) {
+function ProgressRow({ label, done, total, highlight }: StatCardProps) {
   const pct = total === 0 ? 0 : Math.round((done / total) * 100)
 
   return (
-    <div
-      className="flex-1 min-w-0 rounded-2xl px-4 py-3"
-      style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}
-    >
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
-          {emoji} {label}
-        </span>
-        <span className="text-xs font-bold" style={{ color }}>
-          {pct}%
+    <li className="py-3 first:pt-0 last:pb-0">
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-2 text-sm">
+        <span className="font-medium">{label}</span>
+        <span className="tabular-nums text-[var(--text-secondary)]">
+          {done}/{total}개 완료 <span className="ml-1 font-semibold text-[var(--text-primary)]">{pct}%</span>
         </span>
       </div>
-
-      {/* 프로그레스 바 */}
-      <div className="h-1.5 rounded-full mb-2" style={{ backgroundColor: 'var(--bg)' }}>
+      <div aria-hidden="true" className="h-1.5 overflow-hidden rounded-full bg-[var(--surface-2)]">
         <div
-          className="h-1.5 rounded-full transition-all duration-500"
-          style={{ width: `${pct}%`, backgroundColor: color }}
+          className={`h-full rounded-full motion-safe:transition-[width] ${highlight ? 'bg-[var(--accent-ink)]' : 'bg-[var(--text-secondary)]'}`}
+          style={{ width: `${Math.min(pct, 100)}%` }}
         />
       </div>
-
-      <div className="flex items-end justify-between">
-        <span className="text-lg font-bold leading-none" style={{ color: 'var(--text-primary)' }}>
-          {done}
-          <span className="text-xs font-normal ml-1" style={{ color: 'var(--text-muted)' }}>
-            / {total}
-          </span>
-        </span>
-        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>완료</span>
-      </div>
-    </div>
+    </li>
   )
 }
 
@@ -78,28 +60,13 @@ export default function ProgressCards() {
   const monthlyDone = monthlyAll.filter((t) => t.completed).length
 
   return (
-    <div className="flex gap-3 mb-8">
-      <StatCard
-        label="데일리"
-        done={dailyDone}
-        total={dailyTotal}
-        color="var(--accent)"
-        emoji="☀️"
-      />
-      <StatCard
-        label="위클리"
-        done={weeklyDone}
-        total={weeklyTotal}
-        color="#8B5CF6"
-        emoji="📅"
-      />
-      <StatCard
-        label="먼슬리"
-        done={monthlyDone}
-        total={monthlyTotal}
-        color="#22C55E"
-        emoji="🗓"
-      />
-    </div>
+    <section aria-labelledby="home-progress-title" className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-4">
+      <h2 id="home-progress-title" className="mb-3 text-[15px] font-semibold">할 일 진행률</h2>
+      <ul className="divide-y divide-[var(--border)]">
+        <ProgressRow label="오늘" done={dailyDone} total={dailyTotal} highlight />
+        <ProgressRow label="이번 주" done={weeklyDone} total={weeklyTotal} />
+        <ProgressRow label="이번 달" done={monthlyDone} total={monthlyTotal} />
+      </ul>
+    </section>
   )
 }
